@@ -1,0 +1,12 @@
+# Outputs of the organizer hold private file names, account digits, and content snippets.
+# They stay on the Mac and never go to GitHub.
+Organizer Working/
+Inventory *.json
+Plan *.csv
+Plan *.xlsx
+Change Log *.csv
+Apply Preview *.csv
+Undo Log *.csv
+Verify Report *.csv
+.DS_Store
+__pycache__/
