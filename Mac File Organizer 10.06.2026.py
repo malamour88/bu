@@ -79,7 +79,7 @@ PLAN_COLUMNS = [
 LOG_COLUMNS = ["id", "action", "old path", "new path", "status", "note"]
 
 SKIP_NAMES = {".DS_Store", ".localized", "Icon\r", "Thumbs.db", "desktop.ini"}
-SKIP_DIR_NAMES = {"Library", "Applications", "node_modules", ".Trash"}
+SKIP_DIR_NAMES = {"Library", "Applications", "node_modules", ".Trash", ".tmp.driveupload", "ScanSnap Home folder"}
 BUNDLE_EXTS = {
     ".app", ".photoslibrary", ".musiclibrary", ".tvlibrary", ".aplibrary", ".bundle",
     ".framework", ".xcodeproj", ".xcworkspace", ".playground", ".pages", ".numbers",
@@ -110,6 +110,7 @@ SCREENSHOT_RE = re.compile(r"^(Screen ?Shot|Screenshot|Screen Recording|Simulato
 OFFICE_LOCK_RE = re.compile(r"^~\$")
 
 STAMP_RE = re.compile(r"(^|\s)\d{2}\.\d{2}\.\d{4}$")
+UNIT_NAME_RE = re.compile(r"^\d{3} .+ \d{2}\.\d{2}\.\d{4}$")
 FOLDER_COMPONENT_RE = re.compile(r"^\d{3} [^-_/\\:*?\"<>|\x00-\x1f]+$")
 BAD_CHARS_RE = re.compile(r"[-_/\\:*?\"<>|\x00-\x1f]")
 MAX_NAME_LEN = 200
@@ -330,6 +331,12 @@ def is_bundle(path):
     return path.suffix.lower() in BUNDLE_EXTS
 
 
+def inside_new_structure(path, roots):
+    """True when path is one of the six main folders under a scanned root, or sits inside one."""
+    root, rel = relative_to_any(path, roots)
+    return rel is not None and len(rel.parts) >= 1 and rel.parts[0] in MAIN_FOLDERS
+
+
 def folder_is_empty(path):
     """True when a folder holds nothing but system junk, at any depth."""
     for root, dirs, files in os.walk(path):
@@ -428,6 +435,16 @@ def scan_tree(root, excluded, items, roots, use_spotlight):
             if is_dir:
                 if name in SKIP_DIR_NAMES:
                     continue
+                if inside_new_structure(p, roots):
+                    # Folders of the new structure are containers, never items. A unit placed
+                    # inside it (a bundle, a project folder, or a dated unit folder) is an item.
+                    if is_bundle(p):
+                        items.append(make_item(p, "bundle", roots, use_spotlight))
+                    elif is_project(p) or UNIT_NAME_RE.match(name):
+                        items.append(make_item(p, "project folder", roots, use_spotlight))
+                    else:
+                        stack.append(p)
+                    continue
                 if is_bundle(p):
                     items.append(make_item(p, "bundle", roots, use_spotlight))
                     continue
@@ -524,7 +541,7 @@ def make_item(path, kind, roots, use_spotlight, extra_flags=None):
                 flags.append("already organized")
             else:
                 flags.append("in new structure but misnamed")
-        elif re.match(r"^\d{3}\s", top):
+        elif re.match(r"^\d{2,3}\s", top):
             flags.append("old structure")
 
     return {
@@ -1142,6 +1159,11 @@ def cmd_apply(args):
             entry["note"] = str(e)
             entries.append(entry)
             continue
+        if rec.get("kind") == "empty folder" and not folder_is_empty(src):
+            entry["status"] = "skipped"
+            entry["note"] = "folder is no longer empty, rescan before moving it"
+            entries.append(entry)
+            continue
         live_stamp = stamp_from_mtime(st.st_mtime)
         if rec.get("kind") in ("project folder", "bundle"):
             _, newest, _, _ = folder_stats(src)
@@ -1157,6 +1179,12 @@ def cmd_apply(args):
         if dest.resolve() == src.resolve():
             entry["status"] = "unchanged"
             entry["new path"] = str(dest)
+            entries.append(entry)
+            continue
+        if src.is_dir() and not src.is_symlink() and src.resolve() in dest.resolve().parents:
+            entry["status"] = "error"
+            entry["new path"] = str(dest)
+            entry["note"] = "destination is inside the folder being moved"
             entries.append(entry)
             continue
         if dest.exists():
@@ -1268,6 +1296,8 @@ def cmd_verify(args):
     out_dir = Path(os.path.expanduser(args.out)).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     excluded = {out_dir, Path(__file__).resolve().parent}
+    for ex in args.exclude or []:
+        excluded.add(Path(os.path.expanduser(ex)).resolve())
     items = []
     scan_tree(root, excluded, items, [root], use_spotlight=False)
     report = []
@@ -1360,6 +1390,7 @@ def build_parser():
     v.add_argument("--root", required=True, help="folder that holds the six main folders")
     v.add_argument("--out", default=default_out, help="working folder for the report")
     v.add_argument("--show", type=int, default=40, help="problems to print")
+    v.add_argument("--exclude", action="append", help="folder that keeps its own naming system and is not audited, repeatable")
     v.set_defaults(func=cmd_verify)
 
     u = sub.add_parser("undo", help="reverse a change log")
