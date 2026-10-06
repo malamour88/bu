@@ -111,6 +111,7 @@ OFFICE_LOCK_RE = re.compile(r"^~\$")
 
 STAMP_RE = re.compile(r"(^|\s)\d{2}\.\d{2}\.\d{4}$")
 UNIT_NAME_RE = re.compile(r"^\d{3} .+ \d{2}\.\d{2}\.\d{4}$")
+CONTAINER_NAME_RE = re.compile(r"^\d{3} \S.*$")
 FOLDER_COMPONENT_RE = re.compile(r"^\d{3} [^-_/\\:*?\"<>|\x00-\x1f]+$")
 BAD_CHARS_RE = re.compile(r"[-_/\\:*?\"<>|\x00-\x1f]")
 MAX_NAME_LEN = 200
@@ -127,8 +128,11 @@ def norm(s):
     return unicodedata.normalize("NFC", s or "")
 
 
+CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
 def clean_spaces(s):
-    return re.sub(r"\s+", " ", s).strip()
+    return re.sub(r"\s+", " ", CONTROL_RE.sub(" ", s)).strip()
 
 
 def today_stamp():
@@ -240,6 +244,9 @@ def text_from_zip_member(path, member_patterns, limit):
 
 def text_from_pdf(path, limit):
     reader_cls = None
+    import logging
+    logging.getLogger("pypdf").setLevel(logging.ERROR)
+    logging.getLogger("PyPDF2").setLevel(logging.ERROR)
     try:
         from pypdf import PdfReader as reader_cls  # type: ignore
     except ImportError:
@@ -436,11 +443,14 @@ def scan_tree(root, excluded, items, roots, use_spotlight):
                 if name in SKIP_DIR_NAMES:
                     continue
                 if inside_new_structure(p, roots):
-                    # Folders of the new structure are containers, never items. A unit placed
-                    # inside it (a bundle, a project folder, or a dated unit folder) is an item.
+                    # Folders of the new structure are containers, never items. A container is
+                    # named "001 Name" without a date stamp. A unit placed inside the structure
+                    # (a bundle, a dated unit folder, or an unnamed project folder) is an item.
                     if is_bundle(p):
                         items.append(make_item(p, "bundle", roots, use_spotlight))
-                    elif is_project(p) or UNIT_NAME_RE.match(name):
+                    elif CONTAINER_NAME_RE.match(name) and not UNIT_NAME_RE.match(name):
+                        stack.append(p)
+                    elif UNIT_NAME_RE.match(name) or is_project(p):
                         items.append(make_item(p, "project folder", roots, use_spotlight))
                     else:
                         stack.append(p)
@@ -536,7 +546,7 @@ def make_item(path, kind, roots, use_spotlight, extra_flags=None):
         top = rel.parts[0]
         if top in MAIN_FOLDERS:
             folder = "/".join(rel.parts[:-1])
-            errors, _ = validate_name(folder, path.name, stamp_from_mtime(mtime), ext, kind, "move")
+            errors, _ = validate_name(folder, path.name, stamp_from_mtime(mtime), ext, kind, action_for_top(top))
             if not errors:
                 flags.append("already organized")
             else:
@@ -674,6 +684,14 @@ def cmd_scan(args):
 # Naming rules
 # ---------------------------------------------------------------------------
 
+def action_for_top(top):
+    if top == TRASH_FOLDER:
+        return "trash"
+    if top == PRINT_FOLDER:
+        return "print"
+    return "move"
+
+
 def parse_folder(folder):
     parts = [clean_spaces(norm(p)) for p in str(folder or "").replace("\\", "/").split("/")]
     return [p for p in parts if p]
@@ -692,6 +710,8 @@ def validate_folder(folder, action):
     warnings = []
     if not parts:
         return parts, ["new folder is empty"], warnings
+    if str(folder or "").strip()[:1] in ("/", "\\", "~"):
+        errors.append("new folder must be relative to the root, for example 002 Personal/001 Finance")
     for p in parts:
         if not FOLDER_COMPONENT_RE.match(p):
             errors.append(f"folder part '{p}' must look like '001 Name' with no dashes or underscores")
@@ -717,34 +737,41 @@ def validate_folder(folder, action):
     return parts, errors, warnings
 
 
-def normalize_description(raw, code, company, ext):
-    """Strip code, company, stamp and extension if present, and clean forbidden characters."""
+def normalize_description(raw, code, company, ext, stamp=""):
+    """Strip code, company, stamp and extension if present, and clean forbidden characters.
+
+    A trailing MM.DD.YYYY is removed only when it equals the row's stamp or when the name was
+    typed in its full form starting with a code, so a description that ends in a real date keeps it.
+    """
     s = clean_spaces(norm(raw))
     if ext and s.lower().endswith(ext.lower()):
         s = s[: -len(ext)]
     s = BAD_CHARS_RE.sub(" ", s)
     s = clean_spaces(s)
+    all_codes = [main_code(m) for m in MAIN_FOLDERS]
+    typed_in_full = any(s.startswith(c + " ") for c in all_codes)
     changed = True
     while changed and s:
         changed = False
-        new = STAMP_RE.sub("", s).strip()
-        if new != s:
-            s, changed = new, True
-        if s.startswith(code + " "):
-            s, changed = s[len(code) + 1:].strip(), True
-        elif s == code:
-            s, changed = "", True
+        for c in all_codes:
+            if s.startswith(c + " "):
+                s, changed = s[len(c) + 1:].strip(), True
+            elif s == c:
+                s, changed = "", True
         if company and s.lower().startswith(company.lower() + " "):
             s, changed = s[len(company) + 1:].strip(), True
         elif company and s.lower() == company.lower():
             s, changed = "", True
+    m = STAMP_RE.search(s)
+    if m and (typed_in_full or m.group(0).strip() == stamp):
+        s = s[: m.start()].strip()
     return clean_spaces(s)
 
 
 def compose_name(folder_parts, raw_name, stamp, ext):
     code = main_code(folder_parts[0])
     company = company_for(folder_parts)
-    desc = normalize_description(raw_name, code, company, ext)
+    desc = normalize_description(raw_name, code, company, ext, stamp)
     if not desc:
         return "", "new name has no description"
     pieces = [code]
@@ -876,7 +903,7 @@ def plan_row_result(rec):
     if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", stamp or ""):
         res["errors"].append("stamp column is missing or not MM.DD.YYYY")
         return res
-    raw = rec["new name"] or (Path(rec["current name"]).stem if action == "trash" else "")
+    raw = rec["new name"] or (Path(rec["current name"]).stem if action in ("trash", "print") else "")
     name, err = compose_name(parts, raw, stamp, ext)
     if err:
         res["errors"].append(err)
@@ -988,7 +1015,11 @@ def cmd_sheet(args):
     ws.title = "Plan"
     ws.append(PLAN_COLUMNS)
     for rec in rows:
-        ws.append([rec.get(c, "") for c in PLAN_COLUMNS])
+        ws.append([CONTROL_RE.sub(" ", str(rec.get(c, ""))) for c in PLAN_COLUMNS])
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
     widths = {"id": 9, "action": 9, "new folder": 42, "new name": 70, "current name": 40, "current path": 50,
               "kind": 12, "ext": 7, "size kb": 9, "modified": 18, "stamp": 11, "duplicate of": 11,
               "flags": 24, "snippet": 60, "notes": 40}
@@ -1067,11 +1098,15 @@ def write_log(path, entries):
             w.writerow(e)
 
 
-def prune_empty_dirs(dirs, protected, entries):
-    """Remove directories that became empty, deepest first. Never removes protected paths."""
+def prune_empty_dirs(dirs, protected, entries, root=None):
+    """Remove directories that became empty, deepest first. Never removes protected paths or the new structure."""
     for d in sorted(set(dirs), key=lambda p: len(str(p)), reverse=True):
         current = d
         while current and current not in protected and current.is_dir():
+            if root is not None and inside_new_structure(current, [root]):
+                break
+            if current.name in MAIN_FOLDERS:
+                break
             try:
                 names = os.listdir(current)
             except OSError:
@@ -1117,6 +1152,18 @@ def protected_folders(root):
     return protected
 
 
+def row_order(rec):
+    """Trash and print rows run first so a slot vacated by them is free for the moves that follow."""
+    return {"trash": 0, "print": 1}.get(rec["action"], 2)
+
+
+def same_file(a, b):
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
 def cmd_apply(args):
     root = Path(os.path.expanduser(args.root)).resolve()
     if not root.is_dir():
@@ -1135,96 +1182,133 @@ def cmd_apply(args):
     for src_folder in args.source or []:
         protected.add(Path(os.path.expanduser(src_folder)).resolve())
 
+    tag = now_tag()
+    log_path = unique_path(out_dir / (f"Change Log {tag}.csv" if args.execute else f"Apply Preview {tag}.csv"))
+    log_file = open(log_path, "w", encoding="utf-8", newline="")
+    log_writer = csv.DictWriter(log_file, fieldnames=LOG_COLUMNS)
+    log_writer.writeheader()
+    log_file.flush()
+
     entries = []
     source_dirs = []
     moved = 0
-    for rec, res in zip(rows, results):
-        if not res["name"]:
-            continue
-        src = Path(rec["current path"])
-        entry = {"id": rec["id"], "action": rec["action"], "old path": str(src), "new path": "", "status": "", "note": ""}
-        if not src.exists() and not src.is_symlink():
-            entry["status"] = "missing"
-            entries.append(entry)
-            continue
-        if rec.get("kind") == "icloud placeholder" or src.name.endswith(".icloud"):
-            entry["status"] = "skipped"
-            entry["note"] = "iCloud placeholder, download it first"
-            entries.append(entry)
-            continue
-        try:
-            st = os.lstat(src)
-        except OSError as e:
-            entry["status"] = "error"
-            entry["note"] = str(e)
-            entries.append(entry)
-            continue
-        if rec.get("kind") == "empty folder" and not folder_is_empty(src):
-            entry["status"] = "skipped"
-            entry["note"] = "folder is no longer empty, rescan before moving it"
-            entries.append(entry)
-            continue
-        live_stamp = stamp_from_mtime(st.st_mtime)
-        if rec.get("kind") in ("project folder", "bundle"):
-            _, newest, _, _ = folder_stats(src)
-            if newest:
-                live_stamp = stamp_from_mtime(newest)
-        ext = rec.get("ext", "") if rec.get("kind") not in ("project folder", "empty folder") else ""
-        name = res["name"]
-        if live_stamp != rec.get("stamp"):
-            name = with_stamp(name, live_stamp, ext)
-            entry["note"] = f"modified after scan, stamp updated to {live_stamp}"
-        dest_dir = root / res["folder"]
-        dest = dest_dir / name
-        if dest.resolve() == src.resolve():
-            entry["status"] = "unchanged"
-            entry["new path"] = str(dest)
-            entries.append(entry)
-            continue
-        if src.is_dir() and not src.is_symlink() and src.resolve() in dest.resolve().parents:
-            entry["status"] = "error"
-            entry["new path"] = str(dest)
-            entry["note"] = "destination is inside the folder being moved"
-            entries.append(entry)
-            continue
-        if dest.exists():
-            if src.is_file() and dest.is_file() and same_content(src, dest):
-                dest_dir = root / DUPLICATES_FOLDER
-                dest = dest_dir / name
-                entry["note"] = clean_spaces(entry["note"] + " identical file already at destination, sent to duplicates")
-            n = 2
-            while dest.exists():
-                dest = dest_dir / with_suffix_before_stamp(name, n, ext)
-                n += 1
-        entry["new path"] = str(dest)
-        if args.execute:
+
+    def record(entry):
+        entries.append(entry)
+        log_writer.writerow(entry)
+        log_file.flush()
+
+    ordered = sorted(zip(rows, results), key=lambda pair: row_order(pair[0]))
+    try:
+        for rec, res in ordered:
+            if not res["name"]:
+                continue
+            src = Path(rec["current path"])
+            entry = {"id": rec["id"], "action": rec["action"], "old path": str(src), "new path": "", "status": "", "note": ""}
+            if not src.exists() and not src.is_symlink():
+                entry["status"] = "missing"
+                record(entry)
+                continue
+            if rec.get("kind") == "icloud placeholder" or src.name.endswith(".icloud"):
+                entry["status"] = "skipped"
+                entry["note"] = "iCloud placeholder, download it first"
+                record(entry)
+                continue
+            if src.resolve() in protected or src.resolve() == root or src.resolve() in root.parents:
+                entry["status"] = "error"
+                entry["note"] = "refusing to move a protected folder"
+                record(entry)
+                continue
+            if rec.get("kind") == "empty folder" and not folder_is_empty(src):
+                entry["status"] = "skipped"
+                entry["note"] = "folder is no longer empty, rescan before moving it"
+                record(entry)
+                continue
             try:
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(src), str(dest))
-                entry["status"] = "moved"
-                moved += 1
-                source_dirs.append(src.parent)
+                st = os.lstat(src)
             except OSError as e:
                 entry["status"] = "error"
-                entry["note"] = clean_spaces(entry["note"] + " " + str(e))
-        else:
-            entry["status"] = "would move"
-        entries.append(entry)
+                entry["note"] = str(e)
+                record(entry)
+                continue
+            live_stamp = stamp_from_mtime(st.st_mtime)
+            if rec.get("kind") in ("project folder", "bundle"):
+                _, newest, _, _ = folder_stats(src)
+                if newest:
+                    live_stamp = stamp_from_mtime(newest)
+            ext = rec.get("ext", "") if rec.get("kind") not in ("project folder", "empty folder") else ""
+            name = res["name"]
+            if live_stamp != rec.get("stamp"):
+                name = with_stamp(name, live_stamp, ext)
+                entry["note"] = f"modified after scan, stamp updated to {live_stamp}"
+            dest_dir = root / res["folder"]
+            dest = dest_dir / name
+            if dest.exists() and same_file(src, dest):
+                # Same file already at the destination. Either nothing changes, or only the
+                # spelling of the name changes on a case insensitive disk, which is an in place rename.
+                if dest.name == src.name and dest.parent.resolve() == src.parent.resolve():
+                    entry["status"] = "unchanged"
+                    entry["new path"] = str(dest)
+                    record(entry)
+                    continue
+                entry["new path"] = str(dest)
+                if args.execute:
+                    try:
+                        os.rename(src, dest)
+                        entry["status"] = "renamed"
+                        moved += 1
+                    except OSError as e:
+                        entry["status"] = "error"
+                        entry["note"] = clean_spaces(entry["note"] + " " + str(e))
+                else:
+                    entry["status"] = "would rename"
+                record(entry)
+                continue
+            if src.is_dir() and not src.is_symlink() and src.resolve() in dest.resolve().parents:
+                entry["status"] = "error"
+                entry["new path"] = str(dest)
+                entry["note"] = "destination is inside the folder being moved"
+                record(entry)
+                continue
+            if dest.exists():
+                if src.is_file() and dest.is_file() and same_content(src, dest):
+                    dest_dir = root / DUPLICATES_FOLDER
+                    dup_parts = parse_folder(DUPLICATES_FOLDER)
+                    desc = normalize_description(name, main_code(res["folder"]), company_for(parse_folder(res["folder"])), ext, live_stamp)
+                    name, _ = compose_name(dup_parts, desc, live_stamp, ext)
+                    dest = dest_dir / name
+                    entry["note"] = clean_spaces(entry["note"] + " identical file already at destination, sent to duplicates")
+                n = 2
+                while dest.exists():
+                    dest = dest_dir / with_suffix_before_stamp(name, n, ext)
+                    n += 1
+            entry["new path"] = str(dest)
+            if args.execute:
+                try:
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(src), str(dest))
+                    entry["status"] = "moved"
+                    moved += 1
+                    source_dirs.append(src.parent)
+                except OSError as e:
+                    entry["status"] = "error"
+                    entry["note"] = clean_spaces(entry["note"] + " " + str(e))
+            else:
+                entry["status"] = "would move"
+            record(entry)
 
-    if args.execute and args.prune_empty:
-        prune_empty_dirs(source_dirs, protected, entries)
-
-    tag = now_tag()
-    if args.execute:
-        log_path = unique_path(out_dir / f"Change Log {tag}.csv")
-    else:
-        log_path = unique_path(out_dir / f"Apply Preview {tag}.csv")
-    write_log(log_path, entries)
+        if args.execute and args.prune_empty:
+            pruned = []
+            prune_empty_dirs(source_dirs, protected, pruned, root)
+            for e in pruned:
+                record(e)
+    finally:
+        log_file.close()
 
     status_counts = {}
     for e in entries:
         status_counts[e["status"]] = status_counts.get(e["status"], 0) + 1
-    say("Dry run. Nothing moved. Add --execute to move files." if not args.execute else f"Done. Files moved: {moved}")
+    say("Dry run. Nothing moved. Add --execute to move files." if not args.execute else f"Done. Files moved or renamed: {moved}")
     for k, v in sorted(status_counts.items()):
         say(f"  {k}: {v}")
     for e in entries[: args.show]:
@@ -1251,29 +1335,42 @@ def cmd_undo(args):
     out_dir = log_path.parent
     results = []
     restored = 0
+    created_dirs = []
     for e in reversed(entries):
-        if e.get("status") != "moved":
+        if e.get("status") not in ("moved", "renamed"):
             continue
         new = Path(e["new path"])
         old = Path(e["old path"])
         r = {"id": e["id"], "action": "undo", "old path": str(new), "new path": str(old), "status": "", "note": ""}
-        if not new.exists():
+        if not new.exists() and not new.is_symlink():
             r["status"] = "missing"
-        elif old.exists():
+        elif old.exists() and not same_file(old, new):
             r["status"] = "blocked"
             r["note"] = "original path is occupied"
         elif args.execute:
             try:
                 old.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(new), str(old))
+                if same_file(old, new):
+                    os.rename(new, old)
+                else:
+                    shutil.move(str(new), str(old))
                 r["status"] = "restored"
                 restored += 1
+                created_dirs.append(new.parent)
             except OSError as ex:
                 r["status"] = "error"
                 r["note"] = str(ex)
         else:
             r["status"] = "would restore"
         results.append(r)
+    if args.execute:
+        home = Path(os.path.expanduser("~")).resolve()
+        protected = {home}
+        try:
+            protected.update(c.resolve() for c in home.iterdir() if c.is_dir())
+        except OSError:
+            pass
+        prune_empty_dirs(created_dirs, protected, results)
     undo_log = unique_path(out_dir / f"Undo Log {now_tag()}.csv")
     write_log(undo_log, results)
     say(("Dry run. Nothing restored. Add --execute to restore." if not args.execute else f"Restored: {restored}"))
@@ -1328,6 +1425,8 @@ def cmd_verify(args):
                 report.append({"path": str(p), "problem": e})
         else:
             ok += 1
+    for missing in missing_skeleton(root):
+        report.append({"path": str(missing), "problem": "skeleton folder is missing, run init"})
     report_path = unique_path(out_dir / f"Verify Report {now_tag()}.csv")
     with open(report_path, "w", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["path", "problem"])
@@ -1350,6 +1449,41 @@ def cmd_verify(args):
 
 
 # ---------------------------------------------------------------------------
+# Skeleton
+# ---------------------------------------------------------------------------
+
+def skeleton_folders(root):
+    """The six main folders and the company folders with their standard subfolders.
+    Bukrah Foundation keeps its own inside structure, so only its company folder is listed."""
+    out = [root / m for m in MAIN_FOLDERS]
+    out.append(root / DUPLICATES_FOLDER)
+    for company in WORK_FOLDERS:
+        out.append(root / WORK_FOLDER / company)
+        if company in (OTHER_WORK_FOLDER, "001 Bukrah Foundation"):
+            continue
+        for sub in COMPANY_SUBFOLDERS:
+            out.append(root / WORK_FOLDER / company / sub)
+    return out
+
+
+def missing_skeleton(root):
+    return [p for p in skeleton_folders(root) if not p.is_dir()]
+
+
+def cmd_init(args):
+    root = Path(os.path.expanduser(args.root)).resolve()
+    if not root.is_dir():
+        die(f"root is not a folder: {root}")
+    created = 0
+    for p in skeleton_folders(root):
+        if not p.exists():
+            p.mkdir(parents=True)
+            created += 1
+            say(f"  created {p.relative_to(root)}")
+    say(f"Skeleton complete. Folders created: {created}")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -1364,6 +1498,10 @@ def build_parser():
     s.add_argument("--exclude", action="append", help="folder to leave out, repeatable")
     s.add_argument("--no-spotlight", action="store_true", help="skip Spotlight metadata lookups, faster")
     s.set_defaults(func=cmd_scan)
+
+    i = sub.add_parser("init", help="create the six main folders and the company skeleton")
+    i.add_argument("--root", required=True, help="folder that holds the six main folders, for example ~/Documents")
+    i.set_defaults(func=cmd_init)
 
     c = sub.add_parser("check", help="validate a filled plan")
     c.add_argument("plan", help="Plan CSV or .xlsx")

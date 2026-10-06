@@ -148,7 +148,7 @@ The code is the three digit code of the main folder. The date stamp is the file'
 Hard rules:
 
     No dashes and no underscores anywhere, in folder or file names.
-    Spaces and dots only, plus letters and digits. Arabic text in a name is kept.
+    The only separators are spaces and dots. Letters, digits, and Arabic text are kept. Parentheses, commas, and apostrophes that are part of a title are allowed.
     Never the full account number, only the last 4 digits.
     Never the home address, never a street number.
     The description names the person, the account or policy or invoice number, and the period, so nobody has to open the file to know what it is.
@@ -178,7 +178,7 @@ Hard rules:
 7. Download iCloud placeholders so every file is local:
 
        find ~/Documents ~/Desktop ~/Downloads -name "*.icloud" -print
-       find ~/Documents ~/Desktop ~/Downloads -name "*.icloud" -exec brctl download {} \;
+       find ~/Documents ~/Desktop ~/Downloads -name "*.icloud" -exec brctl download {} +
 
    Wait until the find returns nothing. The scan flags any placeholder as needs download, and apply skips it.
 8. Ask the user to close open documents. A file edited after the scan gets its stamp refreshed at apply time, and the log notes it.
@@ -200,6 +200,10 @@ Step 0. Move the managed folders whole, before the scan, so their insides are ne
 
 Nothing inside Bukrah Foundation is renamed. If the user later wants its loose root files named by the rule, that is a separate pass with the Bukrah routines paused.
 
+Then create the skeleton, the six main folders and every company with its five standard subfolders:
+
+    python3 "$ORG" init --root "$DOCS"
+
 Step 1. Scan.
 
     python3 "$ORG" scan "$DOCS" ~/Desktop ~/Downloads "$ICLOUD" --out "$WORK" \
@@ -213,12 +217,12 @@ Step 2. Fill the plan. This is the session's main work. For each row set three c
 
     action       move, trash, print, or skip
     new folder   the destination relative to the root, for example 002 Personal/001 Finance
-    new name     the description only. The script adds code, company, stamp, and extension.
+    new name     the description only. The script adds code, company, stamp, and extension. A trash or print row with a blank description keeps the old file name as its description.
 
 How to decide:
 
     Read the snippet in the inventory first. When a row is flagged needs read, open the file with the Read tool. PDFs and images are readable that way. For docx and rtf use textutil -convert txt -stdout "file".
-    Pull the identifiers into the description: who, which account or policy or invoice, which period.
+    Pull the identifiers into the description: who, which account or policy or invoice, which period. Write a period as "March 2026" or "Q1 2026". A date inside the description in MM.DD.YYYY form is kept, the stamp is added after it.
     Use the mapping in section 3 to choose the destination. The old subfolder a file sat in is a strong hint, the content decides.
     Rows flagged duplicate, installer, zero bytes, temp file, archive extracted, or empty folder are prefilled as trash. Keep that unless the content says otherwise.
     Screenshots: trash unless the image holds something worth keeping, then move it where it belongs with a description of what it shows.
@@ -253,7 +257,7 @@ Read the preview. Then execute:
     python3 "$ORG" apply "$WORK/Plan MM.DD.YYYY.xlsx" --root "$DOCS" --out "$WORK" --execute --prune-empty \
       --source "$DOCS" --source ~/Desktop --source ~/Downloads --source "$ICLOUD"
 
-The change log lands in the working folder. Moving keeps the modified date, so the stamp stays true. A destination name that already exists gets a run number before the stamp. A file identical to one already at its destination goes to 006 Trash/001 Duplicates instead. Empty source folders are removed, never the sources named with --source, never home folders, never iCloud Drive.
+The change log is written row by row while apply runs, so an interrupted run still has a complete undo record for every move it made. Trash and print rows run before move rows, so a slot they vacate is free for the file that takes it. A file whose name changes only in letter case is renamed in place. Moving keeps the modified date, so the stamp stays true. A destination name that already exists gets a run number before the stamp. A file identical to one already at its destination goes to 006 Trash/001 Duplicates instead. Empty source folders are removed, never the sources named with --source, never home folders, never iCloud Drive.
 
 Step 6. Move the remaining managed folders whole:
 
@@ -269,7 +273,7 @@ Step 7. Verify.
       --exclude "$DOCS/003 Work/001 Bukrah Foundation" --exclude "$DOCS/Claude" \
       --exclude "$DOCS/Bukrah Scripts" --exclude "$DOCS/004 Reference/009 Archive"
 
-Zero problems is the target. Fix any violation by editing the plan row and applying again, or by a direct rename that follows the rule.
+Zero problems is the target. Verify also lists any skeleton folder that is missing, which init creates. Fix any naming violation by editing the plan row and applying again, or by a direct rename that follows the rule.
 
 Step 8. Repoint the scheduled tasks. Every task under ~/.claude/scheduled-tasks that names an old path needs the new path. Grep them:
 
@@ -291,6 +295,7 @@ The working folder holds private names, last 4 digits, and content snippets. It 
 
 ## 8. Command reference
 
+    init   --root DIR
     scan   FOLDER... --out DIR [--exclude DIR] [--no-spotlight]
     check  PLAN
     sheet  PLAN [--out FILE] [--to-csv]
