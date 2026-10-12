@@ -1,3 +1,5 @@
+<div align="right">10.12.2026</div>
+
 # Mac File Organizer Runbook
 
 Date: 10.12.2026
@@ -26,6 +28,7 @@ Decisions Mohammad made on 10.07.2026 and 10.12.2026. They are folded into every
     The old trash folders move whole into 006 Trash, never row by row: Documents/To Trash with 3,638 files, Desktop/To Trash with 977 files, Documents/Duplicates, and 02 Work/Review and Trash.
     The Bukrah working folders on the Desktop move whole into the Bukrah Foundation folder with their names and contents untouched: Bukrah Intake 09 08 2026, Bukrah Intake 10.05.2026, Bukrah Evidence Staging 10.05.2026, and Bukrah Letterhead. The Saturday Bukrah session files them.
     Bukrah Foundation moves whole in step 0 as planned. The three enabled scheduled tasks that hard code its path are repointed in step 0, right after the move. Every other task is repointed in step 6, right after apply, in the same sitting.
+    The Desktop pass from "Mac Desktop Pass Runbook 10.12.2026.md" is folded in. Shortcuts gather in ~/Desktop/Shortcuts before the scan, folders Mohammad names in the keep list stay on the Desktop and are excluded, and at the end the Desktop holds only those and Shortcuts. Keep list as of 10.12.2026: none named, so it is empty.
     No more questions to Mohammad before the approval spreadsheet. Start organizing and name every file from its content.
 
 
@@ -211,7 +214,7 @@ A folder that moves whole is one plan row of kind project folder. It gets one na
     Claude outputs                      the files inside are filed from content, context packs and registry backups are 004 Reference/008 Backups material
     Carrier tracking PDFs and Pirate Ship PDFs   shipping records, content names the company, VampireTools when they are customer shipments
     Timesheet earning statement         002 Personal/001 Finance, last 4 of the statement number only
-    .webloc shortcuts and html symlinks  skip, they are shortcuts and not documents
+    .webloc and .inetloc shortcuts, html symlinks, Finder aliases   gathered into ~/Desktop/Shortcuts in step 0b, never in the plan
     Every other loose file              filed from content
 
 ~/Downloads: every loose file is filed from content. Bukrah Foundation documents go to 003 Work/001 Bukrah Foundation/001 Organizer Intake. The Jamal Thobe El Ez folder goes whole to 003 Work/007 Other Work/006 Jamal Thobe El Ez. Installers and archives that were already extracted are trash.
@@ -317,11 +320,24 @@ Then create the skeleton, the six main folders and every company with its five s
 
     python3 "$ORG" init --root "$DOCS"
 
-Step 1. Scan. One command, all three sources, the whole folders named, the no go zones excluded:
+Step 0b. Gather the Desktop shortcuts and settle the keep list. Shortcuts are not documents, so they never enter the plan. Nothing is deleted, mv -n never overwrites:
+
+    mkdir -p ~/Desktop/Shortcuts
+    find ~/Desktop -maxdepth 1 \( -name "*.webloc" -o -name "*.inetloc" -o -type l \) -exec mv -n {} ~/Desktop/Shortcuts/ \;
+    mdfind -onlyin ~/Desktop "kMDItemKind == 'Alias'" | while IFS= read -r f; do mv -n "$f" ~/Desktop/Shortcuts/; done
+    ls ~/Desktop/Shortcuts
+
+    KEEP=()
+    KEEP_EXCLUDES=(); for k in "${KEEP[@]}"; do KEEP_EXCLUDES+=(--exclude ~/Desktop/"$k"); done
+
+KEEP holds the Desktop folders Mohammad named to stay. It is empty on 10.12.2026. If he names folders before the run, add them to KEEP and they stay untouched and out of the plan.
+
+Step 1. Scan. One command, all three sources, the whole folders named, the no go zones and the Desktop shortcuts excluded:
 
     python3 "$ORG" scan "$DOCS" ~/Desktop ~/Downloads --out "$WORK" \
       --exclude "$DOCS/003 Work/001 Bukrah Foundation" \
       --exclude "$DOCS/Claude" --exclude "$DOCS/Bukrah Scripts" \
+      --exclude ~/Desktop/Shortcuts ${KEEP_EXCLUDES[@]+"${KEEP_EXCLUDES[@]}"} \
       --whole "$DOCS/To Trash" --whole ~/Desktop/"To Trash" \
       --whole "$DOCS/Duplicates" --whole "$DOCS/02 Work/Review and Trash" \
       --whole "$DOCS/Nightly Organize Logs" --whole "$DOCS/Cowork Organize Logs" \
@@ -428,7 +444,13 @@ Step 8. Verify.
 
 Zero problems is the target. Verify also lists any skeleton folder that is missing, which init creates. Fix any naming violation by editing the plan row and applying again, or by a direct rename that follows the rule.
 
-Step 9. Report to Mohammad in a few lines: counts per main folder, how many went to trash, how many sit in 001 Inbox for his eyes, the change log path, and the undo command. The undo command is:
+Then the Desktop pass condition:
+
+    ls -la ~/Desktop
+
+The Desktop holds only the KEEP folders, Shortcuts, and hidden system files such as .DS_Store and .localized. Anything else still there is a row that was skipped or failed. Find it in the change log and fix it.
+
+Step 9. Report to Mohammad in a few lines: counts per main folder, how many went to trash, how many sit in 001 Inbox for his eyes, how many shortcuts moved into ~/Desktop/Shortcuts, the change log path, and the undo command. The undo command is:
 
     python3 "$ORG" undo "$WORK/Change Log MM.DD.YYYY HHMM.csv" --execute
 
