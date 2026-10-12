@@ -25,7 +25,7 @@ Decisions Mohammad made on 10.07.2026 and 10.12.2026. They are folded into every
     Code repos and log folders move as one unit each: thobeelez, tapmenu, design-log, Nightly Organize Logs, Cowork Organize Logs, and Bukrah Scripts. Claude stays exactly where it is.
     The old trash folders move whole into 006 Trash, never row by row: Documents/To Trash with 3,638 files, Desktop/To Trash with 977 files, Documents/Duplicates, and 02 Work/Review and Trash.
     The Bukrah working folders on the Desktop move whole into the Bukrah Foundation folder with their names and contents untouched: Bukrah Intake 09 08 2026, Bukrah Intake 10.05.2026, Bukrah Evidence Staging 10.05.2026, and Bukrah Letterhead. The Saturday Bukrah session files them.
-    Bukrah Foundation moves whole in step 0 as planned. The scheduled tasks that hard code its path are repointed in step 6, right after apply, in the same sitting.
+    Bukrah Foundation moves whole in step 0 as planned. The three enabled scheduled tasks that hard code its path are repointed in step 0, right after the move. Every other task is repointed in step 6, right after apply, in the same sitting.
     No more questions to Mohammad before the approval spreadsheet. Start organizing and name every file from its content.
 
 
@@ -183,8 +183,8 @@ A folder that moves whole is one plan row of kind project folder. It gets one na
     02 Work/Archived Work               empty, trash
     02 Work/Review and Trash            006 Trash, one whole row, action trash, description Review and Trash from Work
     03 Reference                        004 Reference
-    04 Quick Share                      001 Inbox, for review, it was a staging area
-    05 Backup                           004 Reference/008 Backups
+    04 Quick Share                      empty on 10.07.2026, so it is an empty folder row, trash. Anything that appears in it goes to 001 Inbox for review
+    05 Backup                           empty on 10.07.2026, so it is an empty folder row, trash. Anything that appears in it goes to 004 Reference/008 Backups
     99 Archive                          004 Reference/009 Archive
     To Be Organized                     filed from content. "Bukrah - For Saturday Session" inside it goes whole to 003 Work/001 Bukrah Foundation/001 Organizer Intake
     To Be Printed                       005 To Be Printed
@@ -311,6 +311,8 @@ Step 0. Move the managed folders whole, before the scan, so their insides are ne
 
 If a Desktop folder did not move because a folder of the same name already sits inside Bukrah Foundation, leave it on the Desktop and list it in the notes for the Saturday session. Nothing inside Bukrah Foundation is renamed. If Mohammad later wants its loose root files named by the rule, that is a separate pass with the Bukrah routines paused.
 
+Repoint the three enabled Bukrah tasks now, because the folder is already at its new path and nothing moves it back if the run stops here. In ~/.claude/scheduled-tasks, in bukrah-chase-statement-reminder, bukrah-monthly-donor-ledger, and bukrah-compliance-check, replace "02 Work/01 Bukrah Foundation" with "003 Work/001 Bukrah Foundation". The destination is fixed by the mv, so no change log is needed. bukrah-weekly-organize is disabled and gets its repoint in step 6, before step 7 re enables it.
+
 Then create the skeleton, the six main folders and every company with its five standard subfolders:
 
     python3 "$ORG" init --root "$DOCS"
@@ -324,9 +326,13 @@ Step 1. Scan. One command, all three sources, the whole folders named, the no go
       --whole "$DOCS/Duplicates" --whole "$DOCS/02 Work/Review and Trash" \
       --whole "$DOCS/Nightly Organize Logs" --whole "$DOCS/Cowork Organize Logs" \
       --whole "$DOCS/design-log" --whole "$DOCS/tapmenu" --whole "$DOCS/thobeelez" \
-      --whole "$DOCS/01 Personal/02 Plan and Goals"
+      --whole "$DOCS/01 Personal/02 Plan and Goals" \
+      --whole "$DOCS/To Be Organized/Bukrah - For Saturday Session" \
+      --whole ~/Desktop/"Stories from Long Ago" --whole ~/Desktop/"SFLA Book 2 Sample 2 Generated" \
+      --whole ~/Desktop/"SFLA Book 2 Gemini Reference Images" --whole ~/Desktop/"Water Project Forms" \
+      --whole ~/Downloads/"Jamal Thobe El Ez"
 
-The scan prints a line every 500 items. It stops with a clear error if a --whole folder does not exist. Drop that one flag and rerun. If it stops on a traceback, fix the cause in the script, note the fix in the report, and rerun with the same sources.
+The scan prints a line every 500 items. It stops with a clear error if a --whole folder does not exist or could not be reached. Drop that one flag and rerun. A loose Makefile, requirements.txt, or package.json at the top of a pile folder makes the scan list that whole pile as one project folder row. Move the stray file out and rescan. If the scan stops on a traceback, fix the cause in the script, note the fix in the report, and rerun with the same sources.
 
 Outputs: Inventory MM.DD.YYYY.json and Plan MM.DD.YYYY.csv. The inventory holds a content snippet, Spotlight metadata, hash, size, dates, and flags for each item. The plan is the editable work list. Flags to act on: duplicate, installer, archive extracted, zero bytes, temp file, screenshot, empty folder, old structure, already organized, needs read, needs download, project folder, moved whole, bundle, symlink.
 
@@ -346,8 +352,10 @@ This writes a folder Batches MM.DD.YYYY with Batch 001 MM.DD.YYYY.json and so on
 
 Step 2b. Run the plan filler workflow. Read Batch List MM.DD.YYYY.json and pass its contents as args.batches:
 
-    Workflow tool, scriptPath ~/Organizer Kit/Plan Filler Workflow 10.12.2026.js,
-    args { "batches": [ ...the list... ], "runbook": "~/Organizer Kit/Mac File Organizer Runbook 10.12.2026.md", "verify": true }
+    Workflow tool, scriptPath "/Users/mohammadalamour/Organizer Kit/Plan Filler Workflow 10.12.2026.js",
+    args { "batches": [ ...the list... ], "runbook": "/Users/mohammadalamour/Organizer Kit/Mac File Organizer Runbook 10.12.2026.md", "verify": true }
+
+Write both paths in full. The Workflow tool resolves scriptPath against the session's working directory and does not expand ~. The kit folder must sit inside that working directory or be added with /add-dir, or the tool refuses the path.
 
 One agent fills each batch and writes Batch NNN Answers MM.DD.YYYY.json next to it. A second agent per batch re reads every answer as a skeptic and fixes weak or unsafe ones in place. The workflow returns counts, the rows sent to Inbox, the files nobody could read, and the questions only a human can answer. Keep those for the report. If the Workflow tool is not available, run one Agent per batch file with the fill prompt from the script, then one skeptic Agent per batch with the verify prompt.
 
@@ -359,7 +367,7 @@ Merge reports answers applied, unknown ids, bad actions, and the rows still to d
 
 How the agents decide, and how the session decides any row it handles itself:
 
-    Read the snippet first. When a row is flagged needs read or the snippet is empty, open the file with the Read tool. PDFs and images are readable that way. For docx, rtf, and pages use textutil -convert txt -stdout "file".
+    Read the snippet first. When a row is flagged needs read or the snippet is empty, open the file with the Read tool. PDFs and images are readable that way. For docx and rtf use textutil -convert txt -stdout "file". textutil cannot read Pages, Numbers, or Keynote documents. For those open the embedded preview with the Read tool: "file.pages/preview.jpg" when the row's kind is bundle, or run unzip -p "file.pages" preview.jpg > "$TMPDIR/preview.jpg" first when the kind is file. If no preview exists, send the row to 001 Inbox with the note "iWork document without embedded preview".
     Pull the identifiers into the description: who, which account or policy or invoice, which period. Write a period as "March 2026" or "Q1 2026". A date inside the description in MM.DD.YYYY form is kept, the stamp is added after it.
     Use the mapping in section 3 to choose the destination. The old subfolder a file sat in is a strong hint, the content decides.
     Rows flagged moved whole take their destination and description from section 3. For tapmenu, thobeelez, and design-log the description comes from the README or the content.
@@ -401,7 +409,7 @@ Step 6. Repoint the scheduled tasks right after apply, in the same sitting. Ever
 
     grep -rl "02 Work\|01 Personal\|00 Inbox\|To Be Organized\|Nightly Organize Logs\|Bukrah Scripts" ~/.claude/scheduled-tasks
 
-On 10.07.2026 the hits were nightly-organize, bukrah-weekly-organize, bukrah-chase-statement-reminder, bukrah-monthly-donor-ledger, bukrah-compliance-check, safi-daily-plan-sync, job-matches-daily, personal-morning-briefing, personal-weekly-review, and weekly-progress-upkeep. Folders follow the mapping in section 3, above all "02 Work/08 Huston Apartments " with the trailing space, which becomes "003 Work/004 Houston Apartments", "02 Work/01 Bukrah Foundation", which becomes "003 Work/001 Bukrah Foundation", and "02 Work/04 Safi", which becomes "003 Work/005 Safi Uncle". A single file that was renamed has its new path in the change log:
+On 10.07.2026 the hits were nightly-organize, bukrah-weekly-organize, bukrah-chase-statement-reminder, bukrah-monthly-donor-ledger, bukrah-compliance-check, safi-daily-plan-sync, job-matches-daily, personal-morning-briefing, personal-weekly-review, and weekly-progress-upkeep. The three enabled Bukrah tasks were already repointed in step 0. The grep still runs over them and catches any other old path they name, such as To Be Organized or Bukrah Scripts. Folders follow the mapping in section 3, above all "02 Work/08 Huston Apartments " with the trailing space, which becomes "003 Work/004 Houston Apartments", "02 Work/01 Bukrah Foundation", which becomes "003 Work/001 Bukrah Foundation", and "02 Work/04 Safi", which becomes "003 Work/005 Safi Uncle". A single file that was renamed has its new path in the change log:
 
     grep -F "old path of the file" "$WORK/Change Log MM.DD.YYYY HHMM.csv"
 

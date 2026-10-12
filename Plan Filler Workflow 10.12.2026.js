@@ -61,7 +61,7 @@ Rules that decide every row. The runbook sections 2, 3 and 4 and step 2 of secti
 - Rows flagged moved whole take destination and description from the section 3 mapping. Project folders and bundles get one name for what they are.
 - Rows with a prefilled action of trash (duplicate, installer, zero bytes, temp file, archive extracted, empty folder) stay trash unless the content clearly says otherwise. Screenshots are trash unless they show something worth keeping.
 - Symlinks, .webloc shortcuts and Google stubs (.gdoc, .gsheet, .gslides) are skip, with a note.
-- When the snippet is empty or the row is flagged needs read, open the file: the Read tool for PDFs and images, textutil -convert txt -stdout for docx, rtf and pages. Never guess a name. If the content stays unclear, action move, new folder 001 Inbox, and a short note.
+- When the snippet is empty or the row is flagged needs read, open the file: the Read tool for PDFs and images, textutil -convert txt -stdout for docx and rtf. textutil cannot read Pages, Numbers or Keynote documents. For .pages, .numbers and .key open the embedded preview with the Read tool: "file.pages/preview.jpg" when the row's kind is bundle, or run unzip -p "file.pages" preview.jpg > "$TMPDIR/preview.jpg" first when the kind is file. Never guess a name. If the content stays unclear or no preview exists, action move, new folder 001 Inbox, and a short note.
 - Every row id in the batch appears exactly once in the answers file.
 `
 
@@ -103,7 +103,8 @@ const sum = (list, f) => list.reduce((n, x) => n + (f(x) || 0), 0)
 const totals = {
   batches: batches.length,
   filled: rows.filter(r => r.fill).length,
-  failed: rows.filter(r => !r.fill).map(r => r.batch),
+  // A fill agent that dies drops its item to null before stage 2 runs, so failures are read by position.
+  failed: batches.filter((b, i) => !(results[i] && results[i].fill)).map(shortName),
   answered: sum(rows, r => r.fill && r.fill.answered),
   inbox: sum(rows, r => r.fill && r.fill.inbox),
   opened: sum(rows, r => r.fill && r.fill.opened),

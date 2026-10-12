@@ -371,7 +371,7 @@ def inside_new_structure(path, roots):
 def folder_is_empty(path):
     """True when a folder holds nothing but system junk, at any depth."""
     for root, dirs, files in os.walk(path):
-        if any(f not in SKIP_NAMES and not f.startswith(".") for f in files):
+        if any((f not in SKIP_NAMES and not f.startswith(".")) or f.endswith(".icloud") for f in files):
             return False
     return True
 
@@ -436,10 +436,20 @@ def relative_to_any(path, roots):
     return None, None
 
 
+def exclusion_paths(spec):
+    """Both spellings of an excluded path: the last name kept as typed, so a symlink such as
+    Documents/OneDrive matches the entry the walk builds, and the fully resolved path."""
+    p = Path(os.path.abspath(os.path.expanduser(spec)))
+    return {p.parent.resolve() / p.name, p.resolve()}
+
+
 def scan_tree(root, excluded, items, roots, use_spotlight, whole=frozenset()):
-    """Walk root, appending items. Bundles, project folders, and folders named in whole are single items."""
+    """Walk root, appending items. Bundles, project folders, and folders named in whole are single items.
+    Paths are compared in NFC form, so a name typed in one Unicode spelling matches the disk's other spelling."""
     stack = [root]
     next_report = 500
+    whole_keys = {norm(str(w)) for w in whole}
+    excluded_keys = [norm(str(ex)) for ex in excluded]
     while stack:
         current = stack.pop()
         if len(items) >= next_report:
@@ -453,7 +463,8 @@ def scan_tree(root, excluded, items, roots, use_spotlight, whole=frozenset()):
         for entry in entries:
             p = Path(entry.path)
             name = entry.name
-            if any(p == ex or ex in p.parents for ex in excluded):
+            key = norm(str(p))
+            if any(key == ex or key.startswith(ex + "/") for ex in excluded_keys):
                 continue
             if name in SKIP_NAMES or name.startswith("."):
                 if name.endswith(".icloud") and name.startswith("."):
@@ -468,8 +479,13 @@ def scan_tree(root, excluded, items, roots, use_spotlight, whole=frozenset()):
                 items.append(make_item(p, "symlink", roots, use_spotlight))
                 continue
             if is_dir:
-                if p in whole:
+                if key in whole_keys:
                     items.append(make_item(p, "project folder", roots, use_spotlight, extra_flags=["moved whole"]))
+                    continue
+                if any(w.startswith(key + "/") for w in whole_keys):
+                    # An ancestor of a whole folder is always descended, whatever else it looks like,
+                    # so a stray project marker or a skip name above it can never swallow it.
+                    stack.append(p)
                     continue
                 if name in SKIP_DIR_NAMES:
                     continue
@@ -648,7 +664,7 @@ def cmd_scan(args):
     out_dir.mkdir(parents=True, exist_ok=True)
     excluded = {out_dir, Path(__file__).resolve().parent}
     for ex in args.exclude or []:
-        excluded.add(Path(os.path.expanduser(ex)).resolve())
+        excluded.update(exclusion_paths(ex))
     whole = set()
     for w in args.whole or []:
         wp = Path(os.path.expanduser(w)).resolve()
@@ -664,6 +680,10 @@ def cmd_scan(args):
     for root in roots:
         say(f"Scanning {root}")
         scan_tree(root, excluded, items, roots, not args.no_spotlight, whole)
+    listed = {norm(it["path"]) for it in items if "moved whole" in it.get("flags", [])}
+    for w in sorted(whole):
+        if norm(str(w)) not in listed:
+            die(f"--whole folder was not reached by the scan, is its parent readable? {w}")
     items.sort(key=lambda it: it["path"])
     for i, it in enumerate(items, 1):
         it["id"] = f"F{i:05d}"
@@ -946,7 +966,9 @@ def plan_row_result(rec):
     if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", stamp or ""):
         res["errors"].append("stamp column is missing or not MM.DD.YYYY")
         return res
-    raw = rec["new name"] or (Path(rec["current name"]).stem if action in ("trash", "print") else "")
+    current = rec.get("current name", "")
+    base = current[: -len(ext)] if ext and current.lower().endswith(ext.lower()) else current
+    raw = rec["new name"] or (base if action in ("trash", "print") else "")
     name, err = compose_name(parts, raw, stamp, ext)
     if err:
         res["errors"].append(err)
@@ -1025,14 +1047,28 @@ def pending_rows(rows):
     A row prefilled trash by the scan has no folder, so it is batched once for a glance.
     Merge writes the default folder on a confirmed trash or print row, which settles it.
     """
-    return [r for r in rows if (r.get("action") or "") != "skip" and not (r.get("new folder") or "").strip()]
+    out = []
+    for r in rows:
+        action = (r.get("action") or "").strip()
+        folder = (r.get("new folder") or "").strip()
+        if action == "skip":
+            continue
+        if not action or not folder:
+            out.append(r)
+    return out
 
 
 def find_inventory(plan_path, given):
+    """The Inventory JSON written by the same scan as the plan, else the newest one next to it."""
     if given:
         p = Path(os.path.expanduser(given))
         return p if p.is_file() else None
-    folder = Path(os.path.expanduser(plan_path)).resolve().parent
+    plan_path = Path(os.path.expanduser(plan_path)).resolve()
+    folder = plan_path.parent
+    if plan_path.stem.startswith("Plan "):
+        sibling = folder / f"Inventory {plan_path.stem[5:]}.json"
+        if sibling.is_file():
+            return sibling
     found = sorted(folder.glob("Inventory *.json"), key=lambda p: p.stat().st_mtime)
     return found[-1] if found else None
 
@@ -1052,8 +1088,15 @@ def cmd_batches(args):
             die(f"cannot read inventory {inv_path}: {e}")
     pending = pending_rows(rows)
     if not pending:
-        say("Every row already has a destination or is skipped. Nothing to batch.")
+        say("Every row already has a destination and an action, or is skipped. Nothing to batch.")
         return
+    if inventory:
+        # Ids restart at F00001 on every scan, so the join is only trusted when the paths agree.
+        matched = sum(1 for r in pending if inventory.get(r["id"], {}).get("path") == r["current path"])
+        if matched == 0:
+            die(f"inventory {inv_path} comes from a different scan, none of its paths match the rows to decide. Pass --inventory with the Inventory JSON written with this plan.")
+        if matched < len(pending):
+            warn(f"{len(pending) - matched} rows are not in {inv_path.name}, they carry only the short plan snippet")
     size = max(1, args.size)
     stamp = today_stamp()
     out_dir = unique_dir(Path(os.path.expanduser(args.out)).resolve() / f"Batches {stamp}")
@@ -1075,6 +1118,8 @@ def cmd_batches(args):
         }
         for r in chunk:
             it = inventory.get(r["id"], {})
+            if it.get("path") != r["current path"]:
+                it = {}
             row = {k: r.get(k, "") for k in BATCH_FIELDS}
             row["prefilled action"] = r.get("action", "")
             row["snippet"] = it.get("snippet") or r.get("snippet", "")
@@ -1629,7 +1674,7 @@ def cmd_verify(args):
     out_dir.mkdir(parents=True, exist_ok=True)
     excluded = {out_dir, Path(__file__).resolve().parent}
     for ex in args.exclude or []:
-        excluded.add(Path(os.path.expanduser(ex)).resolve())
+        excluded.update(exclusion_paths(ex))
     items = []
     scan_tree(root, excluded, items, [root], use_spotlight=False)
     report = []
