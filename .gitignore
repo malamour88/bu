@@ -10,3 +10,6 @@ Undo Log *.csv
 Verify Report *.csv
 .DS_Store
 __pycache__/
+
+# GitHub privacy lockdown output holds repository names. Keep it local.
+GitHub Privacy Change Log *.csv
