@@ -10,6 +10,32 @@ This runbook makes the account as private as GitHub allows. Three parts: the tok
 Scripts in this folder: "GitHub Privacy Lockdown 10.12.2026.py" and "GitHub Privacy Lockdown 10.12.2026.sh".
 
 
+## 0. One command does all of it
+
+Files: "GitHub Privacy Automation 10.12.2026.command" (runner) and "GitHub Privacy Automation 10.12.2026.py" (the work).
+
+    1. Create the token in Section 1, with the two extra Account permissions listed there.
+    2. In Finder, right click "GitHub Privacy Automation 10.12.2026.command", choose Open, then Open again.
+       The first run installs Playwright and a private Chromium copy (about 2 minutes).
+    3. Paste the token when asked. It is held in memory only and never written to disk.
+    4. A Chromium window opens on github.com. Sign in with your usual two factor. The script waits.
+    5. Read the summary. "Done." means every check passed.
+
+What it changes, in order: all your public repositories to private, email visibility to private,
+profile card cleared, git on this Mac set to your noreply address, then in your signed in browser
+"Keep my email addresses private" on, "Block command line pushes that expose my email" on,
+"Private contributions" off, "Activity overview" off, "Show Achievements on my profile" off.
+
+Preview first:  ./"GitHub Privacy Automation 10.12.2026.command" --dry-run
+Report only:    ./"GitHub Privacy Automation 10.12.2026.command" --verify
+Without browser: add --skip-browser
+
+The browser profile lives in ~/Library/Application Support/GitHub Privacy Lockdown. Delete that folder to sign it out.
+Screenshots of each settings page land in "GitHub Privacy Screenshots 10.12.2026" next to the script. They stay off GitHub.
+
+Still manual after the run: unstar repositories, unfollow accounts, make public gists secret, revoke old OAuth apps (Section 4).
+
+
 ## 1. Token permissions (PAT)
 
 Create one token. Use it for the script, then delete it.
@@ -26,13 +52,16 @@ Fine grained token (recommended)
     Repository permissions:
         Administration: Read and write        (required to change visibility, PATCH /repos/{owner}/{repo})
         Metadata: Read-only                   (added automatically, required to list repositories)
-    Account permissions: none
+    Account permissions (needed by the automation script only):
+        Email addresses: Read and write       (sets email visibility, reads the noreply address)
+        Profile: Read and write               (clears the public profile card)
     Generate token, copy it once.
 
 Classic token (only if you cannot use fine grained)
 
     Developer settings, Personal access tokens, Tokens (classic), Generate new token (classic)
-    Scope: repo        (full control of private repositories, which includes changing visibility)
+    Scopes: repo        (full control of private repositories, which includes changing visibility)
+            user        (email visibility and profile card, automation script only)
     Nothing else.
 
 Why this is enough: the script calls two endpoints only. GET /user/repos needs Metadata read. PATCH /repos/{owner}/{repo} with {"private": true} needs Administration write. No account level permission is needed.

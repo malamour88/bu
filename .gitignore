@@ -13,3 +13,5 @@ __pycache__/
 
 # GitHub privacy lockdown output holds repository names. Keep it local.
 GitHub Privacy Change Log *.csv
+.venv/
+GitHub Privacy Screenshots */
