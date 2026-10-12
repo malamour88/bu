@@ -10,3 +10,6 @@ Undo Log *.csv
 Verify Report *.csv
 .DS_Store
 __pycache__/
+Batches */
+Batch *.json
+Batch Index *.csv

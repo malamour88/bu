@@ -9,6 +9,8 @@
 # Subcommands
 #   scan     Inventory one or more folders. Writes Inventory JSON and Plan CSV.
 #            A folder named with --whole is listed as one unit that moves whole.
+#   batches  Split the undecided plan rows into batch files for the agents that fill the plan.
+#   merge    Write the agents' answer files back into the plan.
 #   check    Validate a filled plan. Touches no file.
 #   sheet    Convert Plan CSV to .xlsx for approval, or an approved .xlsx back to CSV.
 #   apply    Execute an approved plan. Dry run by default. Add --execute to move files.
@@ -70,6 +72,7 @@ PRINT_FOLDER = "005 To Be Printed"
 INBOX_FOLDER = "001 Inbox"
 WORK_FOLDER = "003 Work"
 OTHER_WORK_FOLDER = "007 Other Work"
+BUKRAH_FOLDER = "001 Bukrah Foundation"
 DUPLICATES_FOLDER = TRASH_FOLDER + "/001 Duplicates"
 
 ACTIONS = ["move", "trash", "print", "skip"]
@@ -163,6 +166,19 @@ def unique_path(path):
     n = 2
     while True:
         candidate = path.with_name(f"{path.stem} {n}{path.suffix}")
+        if not candidate.exists():
+            return candidate
+        n += 1
+
+
+def unique_dir(path):
+    """Return path, or path with a run number appended if a folder of that name exists."""
+    path = Path(path)
+    if not path.exists():
+        return path
+    n = 2
+    while True:
+        candidate = path.with_name(f"{path.name} {n}")
         if not candidate.exists():
             return candidate
         n += 1
@@ -759,7 +775,7 @@ def validate_folder(folder, action):
             errors.append("Work files need a company folder, for example 003 Work/003 VampireTools/002 Finance")
         elif parts[1] not in WORK_FOLDERS:
             errors.append(f"company folder '{parts[1]}' is not one of: " + ", ".join(WORK_FOLDERS))
-        elif len(parts) >= 3 and parts[1] != OTHER_WORK_FOLDER and parts[2] not in COMPANY_SUBFOLDERS:
+        elif len(parts) >= 3 and parts[1] not in (OTHER_WORK_FOLDER, BUKRAH_FOLDER) and parts[2] not in COMPANY_SUBFOLDERS:
             warnings.append(f"company subfolder '{parts[2]}' is not one of the standard five: " + ", ".join(COMPANY_SUBFOLDERS))
     return parts, errors, warnings
 
@@ -985,6 +1001,198 @@ def cmd_check(args):
         say("Fix every error before building the spreadsheet or applying.")
         sys.exit(1)
     say("Plan is valid.")
+
+
+# ---------------------------------------------------------------------------
+# Batches for the agents that fill the plan, and the merge back
+# ---------------------------------------------------------------------------
+
+BATCH_FIELDS = [
+    "id", "current name", "current path", "kind", "ext", "size kb", "modified", "stamp",
+    "duplicate of", "flags", "notes",
+]
+ANSWER_ALIASES = {
+    "action": ("action",),
+    "new folder": ("new folder", "new_folder", "newFolder", "folder", "destination"),
+    "new name": ("new name", "new_name", "newName", "name", "description"),
+    "notes": ("notes", "note"),
+}
+
+
+def pending_rows(rows):
+    """Rows the agents still have to decide: not skipped, and no destination folder yet.
+
+    A row prefilled trash by the scan has no folder, so it is batched once for a glance.
+    Merge writes the default folder on a confirmed trash or print row, which settles it.
+    """
+    return [r for r in rows if (r.get("action") or "") != "skip" and not (r.get("new folder") or "").strip()]
+
+
+def find_inventory(plan_path, given):
+    if given:
+        p = Path(os.path.expanduser(given))
+        return p if p.is_file() else None
+    folder = Path(os.path.expanduser(plan_path)).resolve().parent
+    found = sorted(folder.glob("Inventory *.json"), key=lambda p: p.stat().st_mtime)
+    return found[-1] if found else None
+
+
+def cmd_batches(args):
+    plan_path = Path(os.path.expanduser(args.plan)).resolve()
+    rows = load_plan(plan_path)
+    inventory = {}
+    inv_path = find_inventory(plan_path, args.inventory)
+    if inv_path is None:
+        warn("no Inventory JSON found, batches carry only the short plan snippet")
+    else:
+        try:
+            with open(inv_path, "r", encoding="utf-8") as f:
+                inventory = {it.get("id"): it for it in json.load(f).get("items", [])}
+        except (OSError, ValueError) as e:
+            die(f"cannot read inventory {inv_path}: {e}")
+    pending = pending_rows(rows)
+    if not pending:
+        say("Every row already has a destination or is skipped. Nothing to batch.")
+        return
+    size = max(1, args.size)
+    stamp = today_stamp()
+    out_dir = unique_dir(Path(os.path.expanduser(args.out)).resolve() / f"Batches {stamp}")
+    out_dir.mkdir(parents=True)
+    total = (len(pending) + size - 1) // size
+    index = []
+    batch_files = []
+    for n in range(total):
+        chunk = pending[n * size:(n + 1) * size]
+        batch_path = out_dir / f"Batch {n + 1:03d} {stamp}.json"
+        answers_path = out_dir / f"Batch {n + 1:03d} Answers {stamp}.json"
+        payload = {
+            "batch": n + 1,
+            "of": total,
+            "plan": str(plan_path),
+            "answers file": str(answers_path),
+            "answer format": "a JSON list, one object per row: id, action, new folder, new name, notes. Every id below appears exactly once.",
+            "rows": [],
+        }
+        for r in chunk:
+            it = inventory.get(r["id"], {})
+            row = {k: r.get(k, "") for k in BATCH_FIELDS}
+            row["prefilled action"] = r.get("action", "")
+            row["snippet"] = it.get("snippet") or r.get("snippet", "")
+            row["spotlight"] = it.get("spotlight") or {}
+            payload["rows"].append(row)
+        with open(batch_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=1)
+        batch_files.append(str(batch_path))
+        index.append({
+            "batch": n + 1, "rows": len(chunk), "file": str(batch_path), "answers file": str(answers_path),
+            "first path": chunk[0]["current path"], "last path": chunk[-1]["current path"],
+        })
+    index_path = out_dir / f"Batch Index {stamp}.csv"
+    with open(index_path, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["batch", "rows", "file", "answers file", "first path", "last path"])
+        w.writeheader()
+        for row in index:
+            w.writerow(row)
+    list_path = out_dir / f"Batch List {stamp}.json"
+    with open(list_path, "w", encoding="utf-8") as f:
+        json.dump(batch_files, f, ensure_ascii=False, indent=1)
+    say(f"Rows to decide: {len(pending)} of {len(rows)}   batches: {total}   rows per batch: {size}")
+    say(f"Batch folder: {out_dir}")
+    say(f"Batch index:  {index_path}")
+    say(f"Batch list:   {list_path}   (pass its contents as args.batches to the plan filler workflow)")
+
+
+def answer_value(answer, field):
+    for key in ANSWER_ALIASES[field]:
+        if key in answer and answer[key] is not None:
+            return answer[key]
+    return None
+
+
+def cmd_merge(args):
+    plan_path = Path(os.path.expanduser(args.plan)).resolve()
+    if plan_path.suffix.lower() != ".csv":
+        die("merge writes the plan CSV. Pass the Plan CSV, not the spreadsheet.")
+    rows = load_plan(plan_path)
+    by_id = {r["id"]: r for r in rows}
+    answers_dir = Path(os.path.expanduser(args.answers)).resolve()
+    if answers_dir.is_dir():
+        files = sorted(p for p in answers_dir.rglob("*.json") if "Answers" in p.name)
+    elif answers_dir.is_file():
+        files = [answers_dir]
+    else:
+        die(f"answers folder not found: {answers_dir}")
+    if not files:
+        die(f"no answer files (*Answers*.json) under {answers_dir}")
+    applied = 0
+    unknown = []
+    bad_actions = []
+    bad_files = []
+    seen = {}
+    for fp in files:
+        try:
+            with open(fp, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError) as e:
+            bad_files.append(f"{fp.name}: {e}")
+            continue
+        items = data.get("rows") if isinstance(data, dict) else data
+        if not isinstance(items, list):
+            bad_files.append(f"{fp.name}: not a list of rows")
+            continue
+        for a in items:
+            if not isinstance(a, dict):
+                continue
+            rid = str(a.get("id", "")).strip().upper()
+            rec = by_id.get(rid)
+            if rec is None:
+                unknown.append(f"{rid or '(blank id)'} in {fp.name}")
+                continue
+            action = str(answer_value(a, "action") or "").strip().lower()
+            if action and action not in ACTIONS:
+                bad_actions.append(f"{rid}: action '{action}' in {fp.name}")
+                continue
+            folder = answer_value(a, "new folder")
+            name = answer_value(a, "new name")
+            notes = answer_value(a, "notes")
+            if action:
+                rec["action"] = action
+            if folder is not None:
+                rec["new folder"] = clean_spaces(norm(str(folder)))
+            if not (rec.get("new folder") or "").strip():
+                if rec["action"] == "trash":
+                    rec["new folder"] = TRASH_FOLDER
+                elif rec["action"] == "print":
+                    rec["new folder"] = PRINT_FOLDER
+            if name is not None:
+                rec["new name"] = clean_spaces(norm(str(name)))
+            if notes:
+                rec["notes"] = clean_spaces(norm(str(notes)))
+            if rid in seen and seen[rid] != fp.name:
+                warn(f"{rid} answered in {seen[rid]} and again in {fp.name}, the later file wins")
+            seen[rid] = fp.name
+            applied += 1
+    out_path = Path(os.path.expanduser(args.out)).resolve() if args.out else plan_path
+    tmp = out_path.with_name(out_path.name + ".tmp")
+    write_plan_csv(rows, tmp)
+    os.replace(tmp, out_path)
+    results, errors, warnings_count, undecided = check_plan(rows, quiet=True)
+    remaining = len(pending_rows(rows))
+    say(f"Answer files read: {len(files)}   answers applied: {applied}")
+    for line in bad_files:
+        warn(f"unreadable answer file, skipped: {line}")
+    for line in unknown[:20]:
+        warn(f"unknown row id, skipped: {line}")
+    if len(unknown) > 20:
+        warn(f"... {len(unknown) - 20} more unknown ids")
+    for line in bad_actions[:20]:
+        warn(f"bad action, row left as it was: {line}")
+    say(f"Plan written: {out_path}")
+    say(f"Rows still to decide: {remaining}   undecided actions: {undecided}   check errors: {errors}   warnings: {warnings_count}")
+    if remaining:
+        say("Run batches again to produce batch files for the remaining rows.")
+    if errors:
+        say("Run check to see the errors.")
 
 
 # ---------------------------------------------------------------------------
@@ -1486,7 +1694,7 @@ def skeleton_folders(root):
     out.append(root / DUPLICATES_FOLDER)
     for company in WORK_FOLDERS:
         out.append(root / WORK_FOLDER / company)
-        if company in (OTHER_WORK_FOLDER, "001 Bukrah Foundation"):
+        if company in (OTHER_WORK_FOLDER, BUKRAH_FOLDER):
             continue
         for sub in COMPANY_SUBFOLDERS:
             out.append(root / WORK_FOLDER / company / sub)
@@ -1530,6 +1738,19 @@ def build_parser():
     i = sub.add_parser("init", help="create the six main folders and the company skeleton")
     i.add_argument("--root", required=True, help="folder that holds the six main folders, for example ~/Documents")
     i.set_defaults(func=cmd_init)
+
+    b = sub.add_parser("batches", help="split the rows still to decide into batch files for the plan filler agents")
+    b.add_argument("plan", help="Plan CSV or .xlsx")
+    b.add_argument("--inventory", help="Inventory JSON written by scan, default is the newest one next to the plan")
+    b.add_argument("--out", default=default_out, help="working folder, the batches go in a dated subfolder")
+    b.add_argument("--size", type=int, default=40, help="rows per batch")
+    b.set_defaults(func=cmd_batches)
+
+    m = sub.add_parser("merge", help="write the agents' answer files back into the plan CSV")
+    m.add_argument("plan", help="Plan CSV")
+    m.add_argument("--answers", required=True, help="the batch folder, or one answers JSON file")
+    m.add_argument("--out", help="write the merged plan here instead of in place")
+    m.set_defaults(func=cmd_merge)
 
     c = sub.add_parser("check", help="validate a filled plan")
     c.add_argument("plan", help="Plan CSV or .xlsx")
