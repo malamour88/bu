@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Mac File Organizer
-# Version 10.06.2026
+# Version 10.12.2026
 #
 # Scans folders on a Mac, builds an approval spreadsheet, applies the approved plan,
 # verifies the result, and can undo a run. Standard library only. The openpyxl package
@@ -8,6 +8,7 @@
 #
 # Subcommands
 #   scan     Inventory one or more folders. Writes Inventory JSON and Plan CSV.
+#            A folder named with --whole is listed as one unit that moves whole.
 #   check    Validate a filled plan. Touches no file.
 #   sheet    Convert Plan CSV to .xlsx for approval, or an approved .xlsx back to CSV.
 #   apply    Execute an approved plan. Dry run by default. Add --execute to move files.
@@ -34,10 +35,11 @@ import shutil
 import subprocess
 import sys
 import unicodedata
+import warnings
 import zipfile
 from pathlib import Path
 
-VERSION = "10.06.2026"
+VERSION = "10.12.2026"
 
 MAIN_FOLDERS = [
     "001 Inbox",
@@ -238,7 +240,10 @@ def text_from_zip_member(path, member_patterns, limit):
                         if sum(len(x) for x in out) > limit:
                             return " ".join(out)[:limit]
             return " ".join(out)[:limit]
-    except (zipfile.BadZipFile, OSError, RuntimeError):
+    except Exception:
+        # A corrupt, encrypted, or oddly compressed package raises zlib, EOF, NotImplemented
+        # and other errors from deep inside zipfile. The snippet is best effort, so any
+        # failure means no snippet and the row gets the needs read flag.
         return ""
 
 
@@ -247,6 +252,8 @@ def text_from_pdf(path, limit):
     import logging
     logging.getLogger("pypdf").setLevel(logging.ERROR)
     logging.getLogger("PyPDF2").setLevel(logging.ERROR)
+    warnings.filterwarnings("ignore", module="pypdf")
+    warnings.filterwarnings("ignore", module="PyPDF2")
     try:
         from pypdf import PdfReader as reader_cls  # type: ignore
     except ImportError:
@@ -304,7 +311,8 @@ def extract_text(path, ext, limit):
             return text_from_zip_member(path, [r"xl/sharedStrings\.xml$"], limit)
         if ext == ".pptx":
             return text_from_zip_member(path, [r"ppt/slides/slide\d+\.xml$"], limit)
-    except OSError:
+    except Exception:
+        # One unreadable file must never stop the scan. No snippet means needs read.
         return ""
     return ""
 
@@ -412,11 +420,15 @@ def relative_to_any(path, roots):
     return None, None
 
 
-def scan_tree(root, excluded, items, roots, use_spotlight):
-    """Walk root, appending items. Bundles and project folders are single items."""
+def scan_tree(root, excluded, items, roots, use_spotlight, whole=frozenset()):
+    """Walk root, appending items. Bundles, project folders, and folders named in whole are single items."""
     stack = [root]
+    next_report = 500
     while stack:
         current = stack.pop()
+        if len(items) >= next_report:
+            say(f"  {len(items)} items so far, now in {current}")
+            next_report = (len(items) // 500 + 1) * 500
         try:
             entries = sorted(os.scandir(current), key=lambda e: e.name)
         except OSError as e:
@@ -440,6 +452,9 @@ def scan_tree(root, excluded, items, roots, use_spotlight):
                 items.append(make_item(p, "symlink", roots, use_spotlight))
                 continue
             if is_dir:
+                if p in whole:
+                    items.append(make_item(p, "project folder", roots, use_spotlight, extra_flags=["moved whole"]))
+                    continue
                 if name in SKIP_DIR_NAMES:
                     continue
                 if inside_new_structure(p, roots):
@@ -497,7 +512,8 @@ def make_item(path, kind, roots, use_spotlight, extra_flags=None):
         size, newest, count, top = folder_stats(path)
         if newest:
             mtime = newest
-        snippet = clean_spaces(f"Project folder with {count} files. Top level: " + ", ".join(top) + ". " + readme_snippet(path, 800))[:SNIPPET_JSON_LEN]
+        label = "Folder moved as one unit" if "moved whole" in flags else "Project folder"
+        snippet = clean_spaces(f"{label} with {count} files. Top level: " + ", ".join(top) + ". " + readme_snippet(path, 800))[:SNIPPET_JSON_LEN]
         flags.append("project folder")
     elif kind == "bundle":
         size, newest, count, top = folder_stats(path)
@@ -617,11 +633,21 @@ def cmd_scan(args):
     excluded = {out_dir, Path(__file__).resolve().parent}
     for ex in args.exclude or []:
         excluded.add(Path(os.path.expanduser(ex)).resolve())
+    whole = set()
+    for w in args.whole or []:
+        wp = Path(os.path.expanduser(w)).resolve()
+        if not wp.is_dir():
+            die(f"--whole is not a folder: {w}")
+        if wp in roots or not any(r in wp.parents for r in roots):
+            die(f"--whole folder must sit inside one of the scanned folders: {w}")
+        if any(wp == ex or ex in wp.parents for ex in excluded):
+            die(f"--whole folder is also excluded: {w}")
+        whole.add(wp)
 
     items = []
     for root in roots:
         say(f"Scanning {root}")
-        scan_tree(root, excluded, items, roots, not args.no_spotlight)
+        scan_tree(root, excluded, items, roots, not args.no_spotlight, whole)
     items.sort(key=lambda it: it["path"])
     for i, it in enumerate(items, 1):
         it["id"] = f"F{i:05d}"
@@ -637,6 +663,7 @@ def cmd_scan(args):
             "version": VERSION,
             "scanned": iso_from_time(dt.datetime.now().timestamp()),
             "roots": [str(r) for r in roots],
+            "whole folders": [str(w) for w in sorted(whole)],
             "main folders": MAIN_FOLDERS,
             "work folders": WORK_FOLDERS,
             "company subfolders": COMPANY_SUBFOLDERS,
@@ -1496,6 +1523,7 @@ def build_parser():
     s.add_argument("folders", nargs="+", help="folders to scan, for example ~/Documents ~/Desktop ~/Downloads")
     s.add_argument("--out", default=default_out, help="working folder for outputs")
     s.add_argument("--exclude", action="append", help="folder to leave out, repeatable")
+    s.add_argument("--whole", action="append", help="folder listed as one unit that moves whole, its inside is never listed, repeatable")
     s.add_argument("--no-spotlight", action="store_true", help="skip Spotlight metadata lookups, faster")
     s.set_defaults(func=cmd_scan)
 
