@@ -1,0 +1,23 @@
+{
+  "skill_name": "appledesignaudit",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Here is my landing page (index.html and styles.css in this folder). It feels kind of amateur compared to apple.com but I don't want it to look like Apple, just more polished. Review it with the apple design skill and tell me what to fix first. Don't change anything yet.",
+      "expected_output": "A numbered findings list ordered by impact, covering type scale, spacing, hierarchy, contrast, motion, density. Every finding cites file and line, the current value, and an exact replacement. Contrast ratios are computed, not estimated. No code edits.",
+      "files": ["index.html", "styles.css"]
+    },
+    {
+      "id": 2,
+      "prompt": "Fix findings 1 to 3 from your audit only. Show me before and after for each changed line, don't touch anything else, then re-check just those three.",
+      "expected_output": "Exactly three findings changed with minimal edits, before and after lines shown for each, re-check against the threshold for each with pass or fail, no further findings addressed, and a prompt asking which batch is next.",
+      "files": ["index.html", "styles.css"]
+    },
+    {
+      "id": 3,
+      "prompt": "our marketing site is at https://example.com, i can't give you the repo. can you do the apple style design audit on it? mostly worried about the fonts and the grey text being hard to read",
+      "expected_output": "States up front that source file and line citations are not possible with a URL only. Measures what can be measured from the rendered page, reports contrast ratios only where computed, and marks the rest not measurable. Still produces the six check structure with the type scale and contrast sections leading.",
+      "files": []
+    }
+  ]
+}
