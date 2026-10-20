@@ -10,3 +10,6 @@ Undo Log *.csv
 Verify Report *.csv
 .DS_Store
 __pycache__/
+
+# Local Claude Code hook log, written per session.
+.claude-designlog-hooks.log
