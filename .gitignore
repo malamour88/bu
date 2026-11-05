@@ -10,3 +10,6 @@ Undo Log *.csv
 Verify Report *.csv
 .DS_Store
 __pycache__/
+
+# Plugin hook log, written locally by the design log hook. Holds prompt text, never goes to GitHub.
+.claude-designlog-hooks.log
