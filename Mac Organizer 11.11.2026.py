@@ -267,7 +267,7 @@ class Run:
         self.rows = []
         self.moves = 0
         self.counts = {"filed": 0, "renamed": 0, "to inbox": 0, "duplicates trashed": 0,
-                       "folders merged": 0, "left in place": 0}
+                       "folders merged": 0, "empty folders removed": 0, "left in place": 0}
         log_dir = self.root / rules["log_folder"]
         now = dt.datetime.now()
         kind = "Preview" if preview else "Organizer Log"
@@ -321,12 +321,52 @@ class Run:
 
     # --- step 1 ---------------------------------------------------------
 
-    def build_structure(self):
-        for main in self.rules["main_folders"]:
-            self.mkdir(self.root / main)
-        paths = [r["path"] for r in self.rules["rules"]] + self.rules.get("extra_folders", []) + [self.rules["log_folder"]]
+    def standing_folders(self):
+        """The six main folders, the seven companies, and the log folder. Every other folder
+        is made only when a file goes into it, so no empty folder is ever created."""
+        paths = list(self.rules["main_folders"])
+        for r in self.rules["rules"]:
+            parts = r["path"].split("/")
+            if parts[0] == "003 Work" and len(parts) > 1:
+                paths.append("/".join(parts[:2]))
+        paths.append(self.rules["log_folder"])
+        out = []
         for p in paths:
+            if p not in out:
+                out.append(p)
+        return out
+
+    def build_structure(self):
+        for p in self.standing_folders():
             self.mkdir(self.root / p)
+
+    def remove_empty_folders(self):
+        """Removes every empty folder under the six main folders, deepest first. Protected,
+        kept, code, and recently changed folders stay, and so do the standing folders."""
+        keep = {self.root / p for p in self.standing_folders()}
+        found = []
+        for main in self.rules["main_folders"]:
+            top = self.root / main
+            if not top.is_dir():
+                continue
+            for dirpath, dirnames, _ in os.walk(top):
+                here = Path(dirpath)
+                dirnames[:] = [d for d in dirnames
+                               if not self.is_protected_dir(here / d) and d not in self.keep
+                               and not self.is_code_repo(here / d) and not (here / d).is_symlink()]
+                try:
+                    found.append((here, here.stat().st_mtime))
+                except OSError:
+                    pass
+        # Ages are read before anything is removed, since removing a child folder
+        # makes its parent look freshly changed.
+        for folder, mtime in reversed(found):
+            if folder in keep or mtime > self.cutoff:
+                continue
+            before = len(self.rows)
+            self.remove_if_empty(folder)
+            if len(self.rows) > before:
+                self.counts["empty folders removed"] += 1
 
     # --- step 2 ---------------------------------------------------------
 
@@ -642,6 +682,7 @@ class Run:
         self.merge_old_folders()
         self.file_loose_items()
         self.remove_duplicates()
+        self.remove_empty_folders()
         self.write_log()
         return self.summary()
 

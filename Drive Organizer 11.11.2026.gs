@@ -1080,9 +1080,13 @@ class DriveRun_ {
   }
 
   buildStructure() {
+    // Only the six main folders, the seven companies, and the log folder stand on their own.
+    // Every other folder is made when a file goes into it, so no empty folder is created.
     for (const main of RULES.main_folders) this.folderFor(main);
-    const paths = RULES.rules.map(r => r.path).concat(RULES.extra_folders || []).concat([RULES.log_folder]);
-    for (const p of paths) this.folderFor(p);
+    const companies = RULES.rules.map(r => r.path.split('/'))
+      .filter(parts => parts[0] === '003 Work' && parts.length > 1)
+      .map(parts => parts.slice(0, 2).join('/'));
+    for (const p of companies.concat([RULES.log_folder])) this.folderFor(p);
   }
 
   fileLooseItems() {

@@ -162,6 +162,14 @@ def test_mac_run():
     make(docs / "001 Inbox/EmiratesTicket1.pdf", "ticket")
     make(docs / "001 Inbox/BF OCR Staging 11.03.2026/page.png", "ocr")
     make(cloud / "Cloud Library/Finances/old statement.pdf", "stmt")
+    old = time.time() - 10 * 86400
+    for d in ("003 Work/Finance", "003 Work/Admin and Legal/Contracts", "003 Work/Marketing",
+              "003 Work/006 Lubna", "003 Work/001 Bukrah Foundation/Empty Bukrah Drafts", "Mohammad X Safi/empty"):
+        (docs / d).mkdir(parents=True, exist_ok=True)
+    (docs / "003 Work/Marketing/.DS_Store").write_text("x")
+    (docs / "003 Work/Fresh Folder").mkdir(parents=True, exist_ok=True)
+    for d in ("003 Work/Admin and Legal/Contracts", "003 Work/Admin and Legal", "003 Work/Finance", "003 Work/Marketing", "003 Work/006 Lubna"):
+        os.utime(docs / d, (old, old))
 
     def run(*args):
         return subprocess.run([sys.executable, str(MAC)] + list(args) + ["--rules", str(RULES)],
@@ -207,6 +215,13 @@ def test_mac_run():
     check((vt / "price list.xlsx").exists(), "old 02 Work/Vampire Tools not merged into 003 VampireTools")
     check((docs / "02 Work/Bukrah Foundation/board minutes.docx").exists(), "Bukrah Foundation moved during the merge")
     check((docs / "006 Trash/old.txt").exists(), "To Trash not merged into 006 Trash")
+    for d in ("003 Work/Finance", "003 Work/Admin and Legal", "003 Work/Marketing"):
+        check(not (docs / d).exists(), "empty folder not removed: " + d)
+    check((docs / "003 Work/006 Lubna").is_dir(), "a company folder was removed")
+    check((docs / "003 Work/001 Bukrah Foundation/Empty Bukrah Drafts").is_dir(), "an empty folder inside Bukrah was removed")
+    check((docs / "Mohammad X Safi/empty").is_dir(), "an empty folder inside Mohammad X Safi was removed")
+    check((docs / "003 Work/Fresh Folder").is_dir(), "a folder made minutes ago was removed")
+    check(not (docs / "003 Work/007 Other Work/013 Investment Opportunities").exists(), "an empty extra folder was created")
     check(not (docs / "To Trash").exists(), "empty To Trash folder not removed")
     check((docs / "thobeelez/.git/HEAD").exists(), "a code repo moved")
     check((docs / "Claude/memory.md").exists(), "the Claude folder moved")
