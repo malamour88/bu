@@ -13,3 +13,5 @@ __pycache__/
 Batches */
 Batch *.json
 Batch Index *.csv
+Organizer Log *.csv
+Preview *.csv
