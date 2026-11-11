@@ -59,6 +59,12 @@ Other functions in the same menu:
 
 ## 3. Mac setup, about 5 minutes
 
+Fastest way: open Terminal, paste this one line, and press Return. It downloads the script and the rules, installs the daily run, and organizes the Desktop, Downloads, Documents, and iCloud Drive right away.
+
+    mkdir -p /tmp/ufo && cd /tmp/ufo && B=https://raw.githubusercontent.com/malamour88/bu/claude/busy-darwin-7bdkts && curl -fsSL "$B/Mac%20Organizer%2011.11.2026.py" -o "Mac Organizer 11.11.2026.py" && curl -fsSL "$B/Organizer%20Rules%2011.11.2026.json" -o "Organizer Rules 11.11.2026.json" && python3 "Mac Organizer 11.11.2026.py" install
+
+Then do steps 3 and 4 below. The longer way, with the ZIP, is steps 1 to 4.
+
 1. Open github.com/malamour88/bu, switch to the branch claude/busy-darwin-7bdkts, click Code, then Download ZIP. Open the ZIP in Downloads.
 2. Open Terminal and paste these two lines:
 
