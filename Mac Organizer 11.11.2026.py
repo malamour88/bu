@@ -526,6 +526,18 @@ class Run:
                 self.counts["renamed"] += 1
 
     def file_folder(self, path, move_unmatched, source=None, is_inbox=False):
+        manual = self.rules.get("manual", {}).get(path.name)
+        if manual:
+            if manual == "TRASH":
+                self.send_to_trash(path, "marked useless in the rules")
+                return
+            dest = self.root / manual
+            if dest.exists():
+                self.record("left in place", path, dest, "a folder with this name is already there")
+                return
+            self.move(path, dest, "file folder")
+            self.counts["filed"] += 1
+            return
         bukrah_to = self.mac.get("bukrah_working_folders_to")
         working = source in (home_path("~/Desktop"), home_path("~/Downloads"),
                              home_path("~/Library/Mobile Documents/com~apple~CloudDocs"))

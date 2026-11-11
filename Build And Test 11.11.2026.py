@@ -155,6 +155,10 @@ def test_mac_run():
     make(docs / "001 Inbox/_chat 10.txt", "[10/21/26, 9:47:51 AM] Osama Khan: hello\n[10/21/26, 9:48:00 AM] Mohammad Alamour: hi\n[10/21/26, 9:49:00 AM] Osama Khan: ok\n")
     make(docs / "001 Inbox/2026-10-19_10_04_03.mp3", "voice")
     make(docs / "001 Inbox/empty.txt", "")
+    make(docs / "001 Inbox/Claude.dmg", "installer")
+    make(docs / "001 Inbox/EmiratesTicket1.pdf", "ticket")
+    make(docs / "001 Inbox/BF OCR Staging 11.03.2026/page.png", "ocr")
+    make(cloud / "Cloud Library/Finances/old statement.pdf", "stmt")
 
     def run(*args):
         return subprocess.run([sys.executable, str(MAC)] + list(args) + ["--rules", str(RULES)],
@@ -185,6 +189,11 @@ def test_mac_run():
     check(len(chats) == 1, "chat export not named by its participant")
     check(any((docs / "002 Personal/013 Voice Recordings").glob("002 Personal Voice Recording 1004 10.19.2026.mp3")), "voice recording not renamed")
     check(not (docs / "001 Inbox/empty.txt").exists(), "empty file not trashed")
+    check(not (docs / "001 Inbox/Claude.dmg").exists(), "installer marked useless not trashed")
+    check((docs / "002 Personal/007 Travel/002 Personal Emirates e Ticket 09.19.2026.pdf").exists(), "hand named file not filed")
+    check((docs / "003 Work/001 Bukrah Foundation/BF OCR Staging 11.03.2026/page.png").exists(), "hand named folder not filed")
+    check((docs / "002 Personal/002 Finances/old statement.pdf").exists(), "Cloud Library Finances not merged")
+    check(not (cloud / "Cloud Library").exists(), "empty Cloud Library not removed")
     check((docs / "002 Personal/004 School/002 Personal GMAT Focus Study Guide 10.29.2026.pdf").exists(), "GMAT file not filed")
     check((down / "setup.dmg.crdownload").exists(), "a partial download moved")
     check((docs / "002 Personal/003 Career/resume.pdf").exists(), "old 01 Career not merged into 003 Career")
