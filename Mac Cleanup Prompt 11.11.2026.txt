@@ -1,0 +1,54 @@
+You have access to my Documents folder on my Mac. Organize it so it matches my Google Drive. I approve every move and rename in this task, so work alone and do not stop to ask me. Before each phase, tell me in one short line what you are doing so I can watch.
+
+THE MOST IMPORTANT RULE
+No file is ever deleted. Organizing means moving and renaming only. Never use rm, never empty anything, and never move anything to the Mac Trash. The only place a file may go that is not its proper home is the review folder 006 Trash inside Documents, and only under the rules below. I will review that folder myself.
+
+PHASE 1. LOOK FIRST, CHANGE NOTHING
+1. List Documents two levels deep with file counts per folder.
+2. Show me a short table: folder, what it holds, where it will go. Then start Phase 2 right away.
+
+PHASE 2. TARGET LAYOUT OF DOCUMENTS
+001 Inbox
+002 Personal
+   001 Plan and Goals, 002 Finances, 003 Career, 004 School, 005 Health, 006 Family, 007 Travel, 008 Photography, 009 Mentorship, 010 Sensitive, 011 Vehicles, 012 Legal, 013 Voice Recordings, 014 Screenshots, 015 Home, 016 Media, 017 Contacts
+003 Work
+   001 Bukrah Foundation
+   002 Stories from Long Ago
+   003 VampireTools
+   004 Houston Apartments
+   005 Safi Uncle
+   006 Lubna
+   007 Other Work
+004 Reference
+   001 Guides, 002 Books, 008 Backups, 009 Archive, 010 Organizer Logs, 011 Chat Exports
+005 To Be Printed
+006 Trash
+
+PHASE 3. MERGE DUPLICATE FOLDERS
+1. At the top of Documents, any folder that repeats a main folder (for example Inbox, Personal, Work, Another Work, Reference, To Be Printed, Trash, Copy, or a name ending in Copy or 2) merges into the matching numbered folder. Archive merges into 004 Reference/009 Archive.
+2. Inside 003 Work only the seven company folders stay. A second Stories from Long Ago folder, under any spelling, merges into 002 Stories from Long Ago. Folders such as Finance, Admin and Legal, Client Partners, and Marketing are emptied by moving every file inside to the company it belongs to. Read the file when the name does not tell you. Use 007 Other Work only when no company fits.
+3. When two files with the same name meet, compare their checksums. Exactly the same content: move the extra copy to 006 Trash/Exact Duplicates 11.11.2026. Different content: keep both and add 2 to the second name.
+
+PHASE 4. FILE LOOSE ITEMS
+1. Every file sitting directly in Documents goes into its right folder.
+2. Open each file in 001 Inbox, including images and PDFs, and file it with the name pattern: code company Description MM.DD.YYYY, for example 003 VampireTools Hartford Quote 08.06.2026.pdf.
+3. A file that looks blank, broken, or useless is not deleted. Move it to 006 Trash/Review Before Deleting 11.11.2026.
+4. When you cannot tell where a file belongs, leave it in 001 Inbox and list it for me at the end.
+
+PHASE 5. EMPTY FOLDERS
+After every file has moved, remove a folder only when it is completely empty. A folder holding nothing but .DS_Store counts as empty. Check twice before removing, deepest folders first.
+
+RULES THAT NEVER BEND
+1. Never move, rename, or change anything inside a folder whose name contains Bukrah, Claude, OneDrive, or Mohammad X Safi. Mohammad X Safi stays at the top of Documents under its exact name. Bukrah Foundation keeps its place inside 003 Work.
+2. Code projects (a folder holding .git, package.json, or node_modules, such as thobeelez, tapmenu, or design-log) stay exactly where they are. List them at the end.
+3. Never open a file to edit it. Read only.
+4. Names use letters, numbers, spaces, and dots only. No dashes, no underscores. Never put a street address in a name.
+5. Work only inside Documents. Do not touch Desktop, Downloads, iCloud Drive, or Google Drive.
+
+KEEP A RECORD
+Write every move and rename to 004 Reference/010 Organizer Logs/Cleanup Log 11.11.2026.csv with three columns: action, from, to. Anything can then be put back.
+
+WHEN DONE
+1. Show the final tree of Documents, two levels deep.
+2. Give counts: folders merged, files moved, files renamed, files sent to the review folder, empty folders removed.
+3. List the files left in 001 Inbox and the code projects, so I can decide on them.
