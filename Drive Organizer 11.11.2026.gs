@@ -68,7 +68,8 @@ const RULES = /*RULES_JSON*/{
         "stories from long ago",
         "seema",
         "prophet yusuf",
-        "icoi"
+        "icoi",
+        "sfla"
       ]
     },
     {
@@ -252,7 +253,8 @@ const RULES = /*RULES_JSON*/{
         "voided check",
         "passports",
         "جوازات",
-        "passport photo"
+        "passport photo",
+        "makepassportphoto"
       ]
     },
     {
@@ -468,7 +470,9 @@ const RULES = /*RULES_JSON*/{
     "002 Personal/008 Photography",
     "003 Work/007 Other Work",
     "004 Reference/008 Backups",
-    "004 Reference/009 Archive"
+    "004 Reference/009 Archive",
+    "004 Reference/011 Chat Exports",
+    "002 Personal/013 Voice Recordings"
   ],
   "main_folder_labels": {
     "001 Inbox": "001",
@@ -563,7 +567,10 @@ const RULES = /*RULES_JSON*/{
       "Mohammad Personal": "002 Personal",
       "Archive": "004 Reference/009 Archive"
     },
-    "bukrah_working_folders_to": "003 Work/001 Bukrah Foundation"
+    "bukrah_working_folders_to": "003 Work/001 Bukrah Foundation",
+    "bukrah_keep_in_place": [
+      "Bukrah Foundation"
+    ]
   },
   "drive": {
     "never_rename_inside": [
@@ -572,7 +579,8 @@ const RULES = /*RULES_JSON*/{
       "004 Reference/009 Archive"
     ],
     "run_hour": 6
-  }
+  },
+  "manual": {}
 }/*END_RULES_JSON*/;
 
 // ---------------------------------------------------------------------------

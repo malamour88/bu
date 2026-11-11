@@ -439,6 +439,9 @@ class Run:
                 self.record("blocked", source, "", "macOS did not allow access. Give python3 Full Disk Access.")
                 continue
             for entry in entries:
+                if self.stale_partial(entry):
+                    self.send_to_trash(entry, "unfinished download older than 2 days")
+                    continue
                 if self.skip_entry(entry, source):
                     continue
                 if entry.is_dir():
@@ -446,7 +449,58 @@ class Run:
                 elif entry.is_file():
                     self.file_one(entry, is_inbox)
 
+    def stale_partial(self, entry):
+        name = entry.name.lower()
+        if not name.endswith((".crdownload", ".part", ".download", ".partial")) or not entry.is_file():
+            return False
+        try:
+            return entry.stat().st_mtime < dt.datetime.now().timestamp() - 2 * 86400
+        except OSError:
+            return False
+
+    def special_target(self, path):
+        """Files named by what is inside them, or named by hand in the rules. Returns (folder, name) or None."""
+        manual = self.rules.get("manual", {}).get(path.name)
+        if manual:
+            if manual == "TRASH":
+                return "TRASH", ""
+            folder, _, name = manual.rpartition("/")
+            return self.root / folder, name
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return None
+        if size == 0:
+            return "TRASH", ""
+        when = stamp(path.stat().st_mtime)
+        if re.match(r"(?i)^_?chat( \d+)?\.txt$", path.name) or path.name.lower().startswith("whatsapp chat"):
+            people = chat_people(path)
+            title = "WhatsApp Chat with " + " and ".join(people) if people else "WhatsApp Chat"
+            return self.root / "004 Reference/011 Chat Exports", "004 %s %s.txt" % (title, when)
+        m = re.match(r"^(\d{4})-(\d{2})-(\d{2})_(\d{2})_(\d{2})_\d{2}\.(mp3|m4a|aac|wav)$", path.name, re.I)
+        if m:
+            y, mo, d, hh, mm, ext = m.groups()
+            return (self.root / "002 Personal/013 Voice Recordings",
+                    "002 Personal Voice Recording %s%s %s.%s.%s.%s" % (hh, mm, mo, d, y, ext.lower()))
+        return None
+
     def file_one(self, path, is_inbox):
+        special = self.special_target(path)
+        if special:
+            folder, new_name = special
+            if folder == "TRASH":
+                self.send_to_trash(path, "empty file or marked useless in the rules")
+                return
+            target = folder / new_name
+            if target.exists():
+                if same_content(path, target):
+                    self.send_to_trash(path, "same content as " + str(target))
+                    return
+                target = self.free_name(folder, new_name)
+            self.move(path, target, "file and rename")
+            self.counts["filed"] += 1
+            self.counts["renamed"] += 1
+            return
         base, _ = split_ext(path.name)
         rule = match_rule(base, self.rules)
         if rule:
@@ -473,8 +527,11 @@ class Run:
 
     def file_folder(self, path, move_unmatched, source=None, is_inbox=False):
         bukrah_to = self.mac.get("bukrah_working_folders_to")
-        working = source in (home_path("~/Desktop"), home_path("~/Downloads"))
-        if bukrah_to and working and "bukrah" in path.name.lower() and not self.is_code_repo(path):
+        working = source in (home_path("~/Desktop"), home_path("~/Downloads"),
+                             home_path("~/Library/Mobile Documents/com~apple~CloudDocs"))
+        keep_bukrah = self.mac.get("bukrah_keep_in_place", [])
+        if (bukrah_to and working and "bukrah" in path.name.lower() and path.name not in keep_bukrah
+                and not self.is_code_repo(path)):
             dest = self.root / bukrah_to / path.name
             if dest.exists():
                 self.record("left in place", path, dest, "a folder with this name is already there")
@@ -606,6 +663,27 @@ def newest_mtime(folder, limit=5000):
             if seen >= limit:
                 return newest
     return newest
+
+
+CHAT_LINE = re.compile(r"^\u200e?\[?\d{1,4}[/.\-]\d{1,2}[/.\-]\d{1,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s?[APap]\.?[Mm]\.?)?\]?\s*(?:-\s*)?([^:]{1,40}):")
+
+
+def chat_people(path, me=("mohammad alamour", "mohammad", "you")):
+    """The people who wrote the most lines in a chat export, without the owner."""
+    counts = {}
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            for i, line in enumerate(f):
+                if i > 5000:
+                    break
+                m = CHAT_LINE.match(line.strip())
+                if m:
+                    name = re.sub(r"[^\w\s]", "", m.group(1), flags=re.UNICODE).strip()
+                    if name and name.lower() not in me:
+                        counts[name] = counts.get(name, 0) + 1
+    except OSError:
+        return []
+    return [n for n, _ in sorted(counts.items(), key=lambda kv: -kv[1])[:2]]
 
 
 def same_volume(a, b):
@@ -752,6 +830,49 @@ def cmd_uninstall(args):
     return 0
 
 
+def spotlight(path, keys):
+    if sys.platform != "darwin":
+        return {}
+    cmd = ["mdls"] + sum([["-name", k] for k in keys], []) + [str(path)]
+    out = subprocess.run(cmd, capture_output=True, text=True).stdout
+    found = {}
+    for line in out.splitlines():
+        if " = " in line:
+            k, v = line.split(" = ", 1)
+            v = v.strip().strip('"')
+            if v not in ("(null)", "("):
+                found[k.strip()] = v
+    return found
+
+
+def cmd_review(args):
+    """Prints one line per file left in 001 Inbox so Claude can name it from what it holds."""
+    rules = load_rules(args.rules)
+    inbox = home_path(rules["mac"]["root"]) / rules["inbox"]
+    keys = ["kMDItemTitle", "kMDItemNumberOfPages", "kMDItemPixelWidth", "kMDItemPixelHeight",
+            "kMDItemDurationSeconds", "kMDItemKind"]
+    for p in sorted(inbox.iterdir()):
+        if p.name.startswith("."):
+            continue
+        if p.is_dir():
+            print("%s | folder | %d items" % (p.name, len(os.listdir(p))))
+            continue
+        st = p.stat()
+        info = spotlight(p, keys)
+        parts = [p.name, "%d KB" % (st.st_size // 1024), stamp(st.st_mtime)]
+        for k in keys:
+            if k in info:
+                parts.append(k.replace("kMDItem", "") + " " + info[k][:60])
+        if p.suffix.lower() in (".txt", ".md", ".csv"):
+            try:
+                with open(p, encoding="utf-8", errors="ignore") as f:
+                    parts.append("first line: " + f.readline().strip()[:80])
+            except OSError:
+                pass
+        print(" | ".join(parts))
+    return 0
+
+
 def cmd_status(args):
     rules = load_rules(args.rules)
     pp = plist_path()
@@ -787,12 +908,14 @@ def main(argv=None):
     p.add_argument("--no-run", dest="no_run", action="store_true")
     p.add_argument("--rules", default=None)
     p = sub.add_parser("uninstall")
+    p = sub.add_parser("review")
+    p.add_argument("--rules", default=None)
     p = sub.add_parser("status")
     p.add_argument("--rules", default=None)
     args = parser.parse_args(argv)
     if getattr(args, "rules", None) is None:
         args.rules = str(default_rules_path())
-    commands = {"run": cmd_run, "undo": cmd_undo, "install": cmd_install,
+    commands = {"review": cmd_review, "run": cmd_run, "undo": cmd_undo, "install": cmd_install,
                 "uninstall": cmd_uninstall, "status": cmd_status}
     return commands[args.command](args)
 
