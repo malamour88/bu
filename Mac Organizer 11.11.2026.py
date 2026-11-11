@@ -460,7 +460,7 @@ class Run:
 
     def special_target(self, path):
         """Files named by what is inside them, or named by hand in the rules. Returns (folder, name) or None."""
-        manual = self.rules.get("manual", {}).get(path.name)
+        manual = manual_lookup(self.rules, path.name)
         if manual:
             if manual == "TRASH":
                 return "TRASH", ""
@@ -477,6 +477,13 @@ class Run:
             people = chat_people(path)
             title = "WhatsApp Chat with " + " and ".join(people) if people else "WhatsApp Chat"
             return self.root / "004 Reference/011 Chat Exports", "004 %s %s.txt" % (title, when)
+        shot = re.match(r"^Screen ?shot (\d{4})-(\d{2})-(\d{2}) at (\d{1,2})\.(\d{2})\.\d{2}\s*(AM|PM)?.*\.(png|jpg|jpeg|heic)$",
+                        plain_name(path.name), re.I)
+        if shot:
+            y, mo, d, hh, mm, ampm, ext = shot.groups()
+            h = int(hh) % 12 + (12 if (ampm or "").upper() == "PM" else 0) if ampm else int(hh)
+            return (self.root / "002 Personal/014 Screenshots",
+                    "002 Personal Screenshot %02d%s %s.%s.%s.%s" % (h, mm, mo, d, y, ext.lower()))
         m = re.match(r"^(\d{4})-(\d{2})-(\d{2})_(\d{2})_(\d{2})_\d{2}\.(mp3|m4a|aac|wav)$", path.name, re.I)
         if m:
             y, mo, d, hh, mm, ext = m.groups()
@@ -526,7 +533,7 @@ class Run:
                 self.counts["renamed"] += 1
 
     def file_folder(self, path, move_unmatched, source=None, is_inbox=False):
-        manual = self.rules.get("manual", {}).get(path.name)
+        manual = manual_lookup(self.rules, path.name)
         if manual:
             if manual == "TRASH":
                 self.send_to_trash(path, "marked useless in the rules")
@@ -675,6 +682,25 @@ def newest_mtime(folder, limit=5000):
             if seen >= limit:
                 return newest
     return newest
+
+
+def plain_name(name):
+    """macOS stores names decomposed and puts a narrow space before AM and PM. Compose and plain space them."""
+    name = unicodedata.normalize("NFC", name)
+    for ch in ("\u202f", "\u00a0", "\u2009"):
+        name = name.replace(ch, " ")
+    return re.sub(r"[\u200e\u200f\u2066-\u2069]", "", name)
+
+
+def manual_lookup(rules, name):
+    table = rules.get("manual", {})
+    if name in table:
+        return table[name]
+    key = plain_name(name)
+    for k, v in table.items():
+        if plain_name(k) == key:
+            return v
+    return None
 
 
 CHAT_LINE = re.compile(r"^\u200e?\[?\d{1,4}[/.\-]\d{1,2}[/.\-]\d{1,4},?\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s?[APap]\.?[Mm]\.?)?\]?\s*(?:-\s*)?([^:]{1,40}):")

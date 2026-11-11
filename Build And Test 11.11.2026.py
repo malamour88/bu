@@ -156,6 +156,9 @@ def test_mac_run():
     make(docs / "001 Inbox/2026-10-19_10_04_03.mp3", "voice")
     make(docs / "001 Inbox/empty.txt", "")
     make(docs / "001 Inbox/Claude.dmg", "installer")
+    import unicodedata as _u
+    make(docs / "001 Inbox" / _u.normalize("NFD", "\u0645\u0634\u0631\u0648\u0639 \u0637\u0631\u0648\u062f \u063a\u0630\u0627\u0626\u064a\u0629.pdf"), "parcels")
+    make(docs / "001 Inbox/Screenshot 2026-10-28 at 4.13.13\u202fPM.png", "second shot")
     make(docs / "001 Inbox/EmiratesTicket1.pdf", "ticket")
     make(docs / "001 Inbox/BF OCR Staging 11.03.2026/page.png", "ocr")
     make(cloud / "Cloud Library/Finances/old statement.pdf", "stmt")
@@ -173,9 +176,9 @@ def test_mac_run():
     print("  " + res.stdout.strip().splitlines()[-1] if res.stdout.strip() else "  (no output)")
     vt = docs / "003 Work/003 VampireTools"
     check((vt / "003 VampireTools Hartford Quote Comparison 08.06.2026.pdf").exists(), "VampireTools file not filed and renamed")
-    check((docs / "001 Inbox/Screenshot 2026-11-10 at 3.45.12 PM.png").exists(), "unmatched Desktop file not in 001 Inbox")
-    check((desk / "fresh download.pdf").exists(), "a file changed minutes ago was moved")
+    check((docs / "002 Personal/014 Screenshots/002 Personal Screenshot 1545 11.10.2026.png").exists(), "Desktop screenshot not filed")
     check((docs / "001 Inbox/Old Project Folder/notes.txt").exists(), "unmatched Desktop folder not in 001 Inbox")
+    check((desk / "fresh download.pdf").exists(), "a file changed minutes ago was moved")
     check((docs / "003 Work/001 Bukrah Foundation/Bukrah Intake 10.05.2026/letter.pdf").exists(), "Desktop Bukrah folder not moved into Bukrah Foundation")
     check((docs / "003 Work/001 Bukrah Foundation/Bukrah Letterhead/logo.png").exists(), "Bukrah Letterhead not moved")
     check((docs / "006 Trash/2026-07-05 Verified Duplicates - Safe To Delete/a.pdf").exists(), "Safe To Delete folder not sent to 006 Trash")
@@ -190,6 +193,9 @@ def test_mac_run():
     check(any((docs / "002 Personal/013 Voice Recordings").glob("002 Personal Voice Recording 1004 10.19.2026.mp3")), "voice recording not renamed")
     check(not (docs / "001 Inbox/empty.txt").exists(), "empty file not trashed")
     check(not (docs / "001 Inbox/Claude.dmg").exists(), "installer marked useless not trashed")
+    check((docs / "003 Work/001 Bukrah Foundation/001 Organizer Intake/003 Bukrah Foundation Food Parcels Project 11.05.2026.pdf").exists(),
+          "decomposed Arabic name not matched")
+    check((docs / "002 Personal/014 Screenshots/002 Personal Screenshot 1613 10.28.2026.png").exists(), "screenshot not filed")
     check((docs / "002 Personal/007 Travel/002 Personal Emirates e Ticket 09.19.2026.pdf").exists(), "hand named file not filed")
     check((docs / "003 Work/001 Bukrah Foundation/BF OCR Staging 11.03.2026/page.png").exists(), "hand named folder not filed")
     check((docs / "002 Personal/002 Finances/old statement.pdf").exists(), "Cloud Library Finances not merged")
