@@ -1,19 +1,13 @@
-You are working directly on my Mac. I approve every move, rename, and trash in this task. Work alone, do not stop to ask me unless a step below says to, and tell me in one short line what you are doing before each phase so I can watch.
+You have access to my Documents folder on my Mac. Organize it so it matches my Google Drive. I approve every move and rename in this task, so work alone and do not stop to ask me. Before each phase, tell me in one short line what you are doing so I can watch.
 
-GOAL
-My Documents folder must look like my Google Drive: six main folders, seven companies under Work, no duplicate folders, no empty folders, and no loose files.
+THE MOST IMPORTANT RULE
+No file is ever deleted. Organizing means moving and renaming only. Never use rm, never empty anything, and never move anything to the Mac Trash. The only place a file may go that is not its proper home is the review folder 006 Trash inside Documents, and only under the rules below. I will review that folder myself.
 
-STEP 1. Update the daily organizer first, so its next run does not undo your work.
-Run this in the shell:
-mkdir -p /tmp/ufo && cd /tmp/ufo && B=https://raw.githubusercontent.com/malamour88/bu/claude/busy-darwin-7bdkts && curl -fsSL "$B/Mac%20Organizer%2011.11.2026.py" -o "Mac Organizer 11.11.2026.py" && curl -fsSL "$B/Organizer%20Rules%2011.11.2026.json" -o "Organizer Rules 11.11.2026.json" && python3 "Mac Organizer 11.11.2026.py" install
-The installed copy lives in ~/Library/Application Support/Universal File Organizer. It runs daily at 6:37 AM, files new items by keyword, trashes exact duplicates, and now removes empty folders.
+PHASE 1. LOOK FIRST, CHANGE NOTHING
+1. List Documents two levels deep with file counts per folder.
+2. Show me a short table: folder, what it holds, where it will go. Then start Phase 2 right away.
 
-STEP 2. Look before you touch anything.
-1. List ~/Documents two levels deep with folder sizes and file counts.
-2. If Google Drive for desktop is installed, list ~/Library/CloudStorage/GoogleDrive*/My Drive two levels deep. Read it only. Never change anything in Google Drive.
-3. Show me the plan as a short table: folder, what it holds, where it goes. Then start right away without waiting.
-
-TARGET LAYOUT OF ~/Documents
+PHASE 2. TARGET LAYOUT OF DOCUMENTS
 001 Inbox
 002 Personal
    001 Plan and Goals, 002 Finances, 003 Career, 004 School, 005 Health, 006 Family, 007 Travel, 008 Photography, 009 Mentorship, 010 Sensitive, 011 Vehicles, 012 Legal, 013 Voice Recordings, 014 Screenshots, 015 Home, 016 Media, 017 Contacts
@@ -29,26 +23,32 @@ TARGET LAYOUT OF ~/Documents
    001 Guides, 002 Books, 008 Backups, 009 Archive, 010 Organizer Logs, 011 Chat Exports
 005 To Be Printed
 006 Trash
-Subfolders under 002 Personal and 004 Reference exist only when they hold files. If Google Drive shows a different subfolder for the same thing, use the Drive name.
 
-STEP 3. Merge every duplicate folder into its one true home.
-1. Top of Documents: any folder that duplicates a main folder (for example Inbox, 00 Inbox, Personal, 01 Personal, Work, Another Work, 02 Work, Reference, To Be Printed, Trash, To Trash, Copy, or any name ending in Copy or 2) merges into the matching numbered folder. Archive merges into 004 Reference/009 Archive.
-2. Inside 003 Work only the seven company folders stay. A second Stories from Long Ago folder, under any spelling, merges into 002 Stories from Long Ago. Finance, Admin and Legal, Client Partners, Marketing, and every other non company folder go away: move any file inside to the company it belongs to, by reading the file if the name does not tell you, and use 007 Other Work only when no company fits.
-3. When two files collide in a merge, compare them with shasum. Same content: move the extra copy to ~/.Trash. Different content: keep both and add 2 to the second name.
+PHASE 3. MERGE DUPLICATE FOLDERS
+1. At the top of Documents, any folder that repeats a main folder (for example Inbox, Personal, Work, Another Work, Reference, To Be Printed, Trash, Copy, or a name ending in Copy or 2) merges into the matching numbered folder. Archive merges into 004 Reference/009 Archive.
+2. Inside 003 Work only the seven company folders stay. A second Stories from Long Ago folder, under any spelling, merges into 002 Stories from Long Ago. Folders such as Finance, Admin and Legal, Client Partners, and Marketing are emptied by moving every file inside to the company it belongs to. Read the file when the name does not tell you. Use 007 Other Work only when no company fits.
+3. When two files with the same name meet, compare their checksums. Exactly the same content: move the extra copy to 006 Trash/Exact Duplicates 11.11.2026. Different content: keep both and add 2 to the second name.
 
-STEP 4. Remove every empty folder anywhere under the six main folders, deepest first. A folder that holds only .DS_Store counts as empty. Then run python3 "$HOME/Library/Application Support/Universal File Organizer/Mac Organizer 11.11.2026.py" run and repeat until it prints Nothing to organize.
+PHASE 4. FILE LOOSE ITEMS
+1. Every file sitting directly in Documents goes into its right folder.
+2. Open each file in 001 Inbox, including images and PDFs, and file it with the name pattern: code company Description MM.DD.YYYY, for example 003 VampireTools Hartford Quote 08.06.2026.pdf.
+3. A file that looks blank, broken, or useless is not deleted. Move it to 006 Trash/Review Before Deleting 11.11.2026.
+4. When you cannot tell where a file belongs, leave it in 001 Inbox and list it for me at the end.
 
-STEP 5. Loose files.
-Every file sitting directly in ~/Documents goes into the right folder. For files in 001 Inbox, open each one, including images and PDFs, and file it with the name pattern: code company Description MM.DD.YYYY, for example 003 VampireTools Hartford Quote 08.06.2026.pdf. Useless files, blank files, and installers go to ~/.Trash.
+PHASE 5. EMPTY FOLDERS
+After every file has moved, remove a folder only when it is completely empty. A folder holding nothing but .DS_Store counts as empty. Check twice before removing, deepest folders first.
 
 RULES THAT NEVER BEND
-1. Never touch, rename, or move anything inside a folder whose name contains Bukrah, Claude, OneDrive, or Mohammad X Safi. Mohammad X Safi stays at the top of Documents with its exact name.
-2. Code projects (any folder holding .git, package.json, or node_modules, such as thobeelez, tapmenu, design-log) stay where they are. List them for me at the end and ask once whether to move them.
-3. Never delete. Trash means mv to ~/.Trash, so I can restore anything.
-4. File and folder names use letters, numbers, spaces, and dots only. No dashes, no underscores. Never put a street address in a name.
-5. Do not change anything in Desktop, Downloads, iCloud Drive, or Google Drive in this task.
+1. Never move, rename, or change anything inside a folder whose name contains Bukrah, Claude, OneDrive, or Mohammad X Safi. Mohammad X Safi stays at the top of Documents under its exact name. Bukrah Foundation keeps its place inside 003 Work.
+2. Code projects (a folder holding .git, package.json, or node_modules, such as thobeelez, tapmenu, or design-log) stay exactly where they are. List them at the end.
+3. Never open a file to edit it. Read only.
+4. Names use letters, numbers, spaces, and dots only. No dashes, no underscores. Never put a street address in a name.
+5. Work only inside Documents. Do not touch Desktop, Downloads, iCloud Drive, or Google Drive.
+
+KEEP A RECORD
+Write every move and rename to 004 Reference/010 Organizer Logs/Cleanup Log 11.11.2026.csv with three columns: action, from, to. Anything can then be put back.
 
 WHEN DONE
-1. Show the final tree of ~/Documents, two levels deep.
-2. List what you merged, moved, renamed, and trashed, with counts.
-3. List anything you were unsure about.
+1. Show the final tree of Documents, two levels deep.
+2. Give counts: folders merged, files moved, files renamed, files sent to the review folder, empty folders removed.
+3. List the files left in 001 Inbox and the code projects, so I can decide on them.
