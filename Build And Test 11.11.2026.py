@@ -69,6 +69,13 @@ NAME_CASES = [
     ("Copy of Safi Household Budget", "003 Safi Uncle Household Budget Copy 11.11.2026"),
     ("safi move notes 4521 Ocean View Drive Apt 12.docx", "003 Safi Uncle Move Notes 11.11.2026.docx"),
     ("UHaul 5x8 Trailer Las Vegas Plan 06 13 2026.pdf", "002 Personal UHaul 5x8 Trailer Las Vegas Plan 06.13.2026.pdf"),
+    ("20260103-statements-2639-.pdf", "002 Personal Statements 2639 01.03.2026.pdf"),
+    ("\u062a\u0642\u0631\u064a\u0631 \u0645\u0627\u0644\u064a \u0628\u0643\u0631\u0629.pdf",
+     "003 Bukrah Foundation \u062a\u0642\u0631\u064a\u0631 \u0645\u0627\u0644\u064a \u0628\u0643\u0631\u0629 11.11.2026.pdf"),
+    ("\u0645\u0634\u0627\u0631\u064a\u0639 6 \u0628\u064f\u0643\u0631\u0627.pdf",
+     "003 Bukrah Foundation \u0645\u0634\u0627\u0631\u064a\u0639 6 \u0628\u064f\u0643\u0631\u0627 11.11.2026.pdf"),
+    ("Model 3 insurance card.pdf", "002 Personal Model 3 insurance card 11.11.2026.pdf"),
+    ("VPTI 2 Week Sales Report 10.15.2026.xlsx", "003 VampireTools VPTI 2 Week Sales Report 10.15.2026.xlsx"),
 ]
 
 
@@ -136,7 +143,11 @@ def test_mac_run():
     make(docs / "Safi_Uncle_notes.txt", "safi")
     make(cloud / "Desktop/placeholder.txt", "desk mirror")
     make(cloud / "loose bank statement 2025-01-31.pdf", "bank")
-    make(cloud / "Keynote/deck.key", "keynote")
+    make(cloud / "Keynote/deck.pages", "keynote")
+    make(desk / "Bukrah Letterhead/logo.png", "logo")
+    make(docs / "001 Inbox/2026-07-05 Verified Duplicates - Safe To Delete/a.pdf", "dup")
+    make(cloud / "Mohammad Personal/goals.txt", "goals")
+    make(docs / "Mohammad X Safi/notes.txt", "mxs")
 
     def run(*args):
         return subprocess.run([sys.executable, str(MAC)] + list(args) + ["--rules", str(RULES)],
@@ -154,7 +165,11 @@ def test_mac_run():
     check((docs / "001 Inbox/Screenshot 2026-11-10 at 3.45.12 PM.png").exists(), "unmatched Desktop file not in 001 Inbox")
     check((desk / "fresh download.pdf").exists(), "a file changed minutes ago was moved")
     check((docs / "001 Inbox/Old Project Folder/notes.txt").exists(), "unmatched Desktop folder not in 001 Inbox")
-    check((desk / "Bukrah Intake 10.05.2026/letter.pdf").exists(), "a Bukrah folder moved")
+    check((docs / "003 Work/001 Bukrah Foundation/Bukrah Intake 10.05.2026/letter.pdf").exists(), "Desktop Bukrah folder not moved into Bukrah Foundation")
+    check((docs / "003 Work/001 Bukrah Foundation/Bukrah Letterhead/logo.png").exists(), "Bukrah Letterhead not moved")
+    check((docs / "006 Trash/2026-07-05 Verified Duplicates - Safe To Delete/a.pdf").exists(), "Safe To Delete folder not sent to 006 Trash")
+    check((docs / "002 Personal/goals.txt").exists(), "iCloud Mohammad Personal not merged into 002 Personal")
+    check((docs / "Mohammad X Safi/notes.txt").exists(), "Mohammad X Safi folder moved")
     check((docs / "002 Personal/004 School/002 Personal GMAT Focus Study Guide 10.29.2026.pdf").exists(), "GMAT file not filed")
     check((down / "setup.dmg.crdownload").exists(), "a partial download moved")
     check((docs / "002 Personal/003 Career/resume.pdf").exists(), "old 01 Career not merged into 003 Career")
@@ -169,7 +184,7 @@ def test_mac_run():
            time.strftime("%m.%d.%Y", time.localtime(time.time() - 10 * 86400)) + ".txt")).exists(),
           "Safi file at the top of Documents not filed")
     check((cloud / "Desktop/placeholder.txt").exists(), "iCloud Desktop mirror touched")
-    check((cloud / "Keynote/deck.key").exists(), "an iCloud app folder moved")
+    check((cloud / "Keynote/deck.pages").exists(), "an iCloud app folder moved")
     check((docs / "002 Personal/002 Finances/002 Personal Loose Bank Statement 01.31.2025.pdf").exists(),
           "iCloud bank statement not filed")
     trash = home / ".Trash"
@@ -214,6 +229,7 @@ add('Hartford copy.pdf', 'root', {md5Checksum: 'aaa', size: '10'});
 add('IMG_7455.HEIC', 'root', {md5Checksum: 'bbb', size: '20'});
 add('Random Folder', 'root', {mimeType: FOLDER});
 add('Bukrah Shared', 'root', {mimeType: FOLDER});
+add('Mohammad X Safi', 'root', {mimeType: FOLDER});
 add('board_minutes-2026.docx', b, {md5Checksum: 'ccc', size: '30'});
 add('board copy.docx', p, {md5Checksum: 'ccc', size: '30'});
 add('my_resume.pdf', p, {md5Checksum: 'ddd', size: '40'});
@@ -280,7 +296,7 @@ def test_drive_run():
     check("board copy.docx" in r["trashed"], "duplicate outside Bukrah not trashed in favor of the Bukrah copy")
     check(any(a.startswith("002 Personal/") and "Resume" in a and a.endswith(".pdf") and "_" not in a for a in after),
           "file inside 002 Personal not renamed to the rule: %s" % after)
-    check(r["rootFolders"] == ["001 Inbox", "002 Personal", "003 Work", "004 Reference", "005 To Be Printed", "006 Trash", "Bukrah Shared"],
+    check(r["rootFolders"] == ["001 Inbox", "002 Personal", "003 Work", "004 Reference", "005 To Be Printed", "006 Trash", "Bukrah Shared", "Mohammad X Safi"],
           "My Drive root holds more than the six folders: %s" % r["rootFolders"])
     check("Nothing to organize" in r["second"], "second run was not quiet: " + r["second"])
     check(r["restored"] == r["before"], "undo did not restore the Drive: %s" % r["restored"])

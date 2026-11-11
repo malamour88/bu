@@ -1,7 +1,6 @@
 {
   "version": "11.11.2026",
   "about": "Universal File Organizer rules. One file drives both the Mac script and the Google Drive script. Rules are checked top to bottom and the first match wins. Keywords match whole words in the file or folder name, case is ignored.",
-
   "main_folders": [
     "001 Inbox",
     "002 Personal",
@@ -10,101 +9,438 @@
     "005 To Be Printed",
     "006 Trash"
   ],
-
   "inbox": "001 Inbox",
   "trash_folder": "006 Trash",
   "log_folder": "004 Reference/010 Organizer Logs",
-
   "rules": [
-    {"path": "003 Work/001 Bukrah Foundation/001 Organizer Intake", "label": "003 Bukrah Foundation", "strip": ["Bukrah Foundation", "Bukrah"],
-     "keywords": ["bukrah", "katz compliance"]},
-
-    {"path": "003 Work/002 Stories from Long Ago", "label": "003 Stories from Long Ago", "strip": ["Stories from Long Ago", "Stories From Long Ago"],
-     "keywords": ["stories from long ago", "seema", "prophet yusuf", "icoi"]},
-
-    {"path": "003 Work/003 VampireTools", "label": "003 VampireTools", "strip": ["VampireTools", "Vampire Tools", "VT"],
-     "keywords": ["vampire", "vampiretools", "vampire tools", "vt", "kimball", "hartford", "stafda", "stfda", "bop", "broker call"]},
-
-    {"path": "003 Work/004 Houston Apartments", "label": "003 Houston Apartments", "strip": ["Houston Apartments"],
-     "keywords": ["houston", "propcare", "bonnie garcia"]},
-
-    {"path": "003 Work/005 Safi Uncle", "label": "003 Safi Uncle", "strip": ["Safi Uncle", "Safi"],
-     "keywords": ["safi", "qureshey", "skyline", "synology", "yf sq"]},
-
-    {"path": "003 Work/006 Lubna", "label": "003 Lubna", "strip": ["Lubna"],
-     "keywords": ["lubna"]},
-
-    {"path": "003 Work/007 Other Work/012 Mount Fuji Water", "label": "003 Mount Fuji Water", "strip": ["Mount Fuji Water"],
-     "keywords": ["mount fuji", "fuji water"]},
-
-    {"path": "003 Work/007 Other Work/010 Onsite Trucking Compliance Instagram Launch 10.17.2026", "label": "003 Onsite Trucking", "strip": ["Onsite Trucking"],
-     "keywords": ["onsite trucking", "trucking compliance"]},
-
-    {"path": "003 Work/007 Other Work/011 Syrian Olive Oil Import Project", "label": "003 Syrian Olive Oil", "strip": ["Syrian Olive Oil"],
-     "keywords": ["olive oil"]},
-
-    {"path": "003 Work/007 Other Work/001 Resistance X", "label": "003 Resistance X", "strip": ["Resistance X"],
-     "keywords": ["resistance x"]},
-
-    {"path": "003 Work/007 Other Work/004 Rahma Center", "label": "003 Rahma Center", "strip": ["Rahma Center"],
-     "keywords": ["rahma"]},
-
-    {"path": "003 Work/007 Other Work/005 5PIE", "label": "003 5PIE", "strip": ["5PIE"],
-     "keywords": ["5pie"]},
-
-    {"path": "003 Work/007 Other Work/007 Bullionite", "label": "003 Bullionite", "strip": ["Bullionite"],
-     "keywords": ["bullionite"]},
-
-    {"path": "003 Work/007 Other Work/009 Timesheets", "label": "003 Other Work", "strip": [],
-     "keywords": ["timesheet", "timesheets"]},
-
-    {"path": "003 Work/007 Other Work/008 Startup Ideas", "label": "003 Other Work", "strip": [],
-     "keywords": ["startup idea", "startup ideas"]},
-
-    {"path": "002 Personal/010 Sensitive", "label": "002 Personal", "strip": ["Personal"], "confidential": true,
-     "keywords": ["passport", "ssn", "social security", "drivers license", "driver license", "green card", "birth certificate", "password", "passwords", "recovery codes", "check scan", "voided check"]},
-
-    {"path": "002 Personal/006 Family", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["deaa", "family"]},
-
-    {"path": "002 Personal/005 Health", "label": "002 Personal", "strip": ["Personal"], "confidential": true,
-     "keywords": ["medical", "doctor", "lab results", "prescription", "insurance card", "dental", "vision exam"]},
-
-    {"path": "002 Personal/005 Health", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["workout", "supplement", "supplements", "fitness", "nutrition", "meal plan"]},
-
-    {"path": "002 Personal/004 School", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["gmat", "stanford", "gsb", "mba", "transcript", "uci", "school"]},
-
-    {"path": "002 Personal/003 Career", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["resume", "cv", "cover letter", "career", "linkedin", "community leadership", "job offer"]},
-
-    {"path": "002 Personal/002 Finances", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["bank statement", "account statement", "tax return", "1099", "w2", "w 2", "receipt", "receipts", "credit card", "budget"]},
-
-    {"path": "002 Personal/007 Travel", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["itinerary", "flight", "boarding pass", "hotel", "uhaul", "u haul", "trip", "travel", "getaway"]},
-
-    {"path": "002 Personal/009 Mentorship", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["mentorship", "mentor", "mentee"]},
-
-    {"path": "002 Personal/001 Plan and Goals", "label": "002 Personal", "strip": ["Personal"],
-     "keywords": ["goals", "life plan", "vision board"]},
-
-    {"path": "004 Reference/001 Guides", "label": "004", "strip": ["Reference"],
-     "keywords": ["guide", "best practices", "manual", "tutorial", "handbook", "how to"]},
-
-    {"path": "005 To Be Printed", "label": "005", "strip": [],
-     "keywords": ["to print", "print this", "printable"]}
+    {
+      "path": "003 Work/001 Bukrah Foundation/001 Organizer Intake",
+      "label": "003 Bukrah Foundation",
+      "strip": [
+        "Bukrah Foundation",
+        "Bukrah"
+      ],
+      "keywords": [
+        "bukrah",
+        "katz compliance",
+        "بكرا",
+        "بكرة",
+        "بكره"
+      ]
+    },
+    {
+      "path": "003 Work/002 Stories from Long Ago",
+      "label": "003 Stories from Long Ago",
+      "strip": [
+        "Stories from Long Ago",
+        "Stories From Long Ago"
+      ],
+      "keywords": [
+        "stories from long ago",
+        "seema",
+        "prophet yusuf",
+        "icoi"
+      ]
+    },
+    {
+      "path": "003 Work/003 VampireTools",
+      "label": "003 VampireTools",
+      "strip": [
+        "VampireTools",
+        "Vampire Tools",
+        "VT"
+      ],
+      "keywords": [
+        "vampire",
+        "vampiretools",
+        "vampire tools",
+        "vt",
+        "kimball",
+        "hartford",
+        "stafda",
+        "stfda",
+        "bop",
+        "broker call",
+        "vpti"
+      ]
+    },
+    {
+      "path": "003 Work/004 Houston Apartments",
+      "label": "003 Houston Apartments",
+      "strip": [
+        "Houston Apartments"
+      ],
+      "keywords": [
+        "houston",
+        "propcare",
+        "bonnie garcia",
+        "texas comptroller"
+      ]
+    },
+    {
+      "path": "003 Work/005 Safi Uncle",
+      "label": "003 Safi Uncle",
+      "strip": [
+        "Safi Uncle",
+        "Safi"
+      ],
+      "keywords": [
+        "safi",
+        "qureshey",
+        "skyline",
+        "synology",
+        "yf sq"
+      ]
+    },
+    {
+      "path": "003 Work/006 Lubna",
+      "label": "003 Lubna",
+      "strip": [
+        "Lubna"
+      ],
+      "keywords": [
+        "lubna"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/012 Mount Fuji Water",
+      "label": "003 Mount Fuji Water",
+      "strip": [
+        "Mount Fuji Water"
+      ],
+      "keywords": [
+        "mount fuji",
+        "fuji water"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/010 Onsite Trucking Compliance Instagram Launch 10.17.2026",
+      "label": "003 Onsite Trucking",
+      "strip": [
+        "Onsite Trucking"
+      ],
+      "keywords": [
+        "onsite trucking",
+        "trucking compliance"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/011 Syrian Olive Oil Import Project",
+      "label": "003 Syrian Olive Oil",
+      "strip": [
+        "Syrian Olive Oil"
+      ],
+      "keywords": [
+        "olive oil"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/001 Resistance X",
+      "label": "003 Resistance X",
+      "strip": [
+        "Resistance X"
+      ],
+      "keywords": [
+        "resistance x"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/004 Rahma Center",
+      "label": "003 Rahma Center",
+      "strip": [
+        "Rahma Center"
+      ],
+      "keywords": [
+        "rahma"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/005 5PIE",
+      "label": "003 5PIE",
+      "strip": [
+        "5PIE"
+      ],
+      "keywords": [
+        "5pie"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/007 Bullionite",
+      "label": "003 Bullionite",
+      "strip": [
+        "Bullionite"
+      ],
+      "keywords": [
+        "bullionite"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/009 Timesheets",
+      "label": "003 Other Work",
+      "strip": [],
+      "keywords": [
+        "timesheet",
+        "timesheets"
+      ]
+    },
+    {
+      "path": "003 Work/007 Other Work/008 Startup Ideas",
+      "label": "003 Other Work",
+      "strip": [],
+      "keywords": [
+        "startup idea",
+        "startup ideas"
+      ]
+    },
+    {
+      "path": "006 Trash",
+      "label": "006",
+      "strip": [],
+      "keywords": [
+        "safe to delete",
+        "verified duplicates"
+      ]
+    },
+    {
+      "path": "002 Personal/010 Sensitive",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "confidential": true,
+      "keywords": [
+        "passport",
+        "ssn",
+        "social security",
+        "drivers license",
+        "driver license",
+        "green card",
+        "birth certificate",
+        "password",
+        "passwords",
+        "recovery codes",
+        "check scan",
+        "voided check",
+        "passports",
+        "جوازات",
+        "passport photo"
+      ]
+    },
+    {
+      "path": "002 Personal/011 Vehicles",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "model 3",
+        "tesla",
+        "honda",
+        "grom",
+        "dmv",
+        "vehicle",
+        "car insurance",
+        "insurance card"
+      ]
+    },
+    {
+      "path": "002 Personal/012 Legal",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "confidential": true,
+      "keywords": [
+        "settlement agreement",
+        "petitioner",
+        "petitioners",
+        "court",
+        "attorney",
+        "lawsuit"
+      ]
+    },
+    {
+      "path": "002 Personal/006 Family",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "deaa",
+        "family",
+        "ahmad",
+        "qais",
+        "karam"
+      ]
+    },
+    {
+      "path": "002 Personal/005 Health",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "confidential": true,
+      "keywords": [
+        "medical",
+        "doctor",
+        "lab results",
+        "prescription",
+        "dental",
+        "vision exam"
+      ]
+    },
+    {
+      "path": "002 Personal/005 Health",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "workout",
+        "supplement",
+        "supplements",
+        "fitness",
+        "nutrition",
+        "meal plan"
+      ]
+    },
+    {
+      "path": "002 Personal/004 School",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "gmat",
+        "stanford",
+        "gsb",
+        "mba",
+        "transcript",
+        "uci",
+        "school"
+      ]
+    },
+    {
+      "path": "002 Personal/003 Career",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "resume",
+        "cv",
+        "cover letter",
+        "career",
+        "linkedin",
+        "community leadership",
+        "job offer"
+      ]
+    },
+    {
+      "path": "002 Personal/002 Finances",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "bank statement",
+        "account statement",
+        "tax return",
+        "1099",
+        "w2",
+        "w 2",
+        "receipt",
+        "receipts",
+        "credit card",
+        "budget",
+        "statements",
+        "bank",
+        "paystub",
+        "pay stub",
+        "robinhood",
+        "brokerage",
+        "citi",
+        "chase",
+        "dispute",
+        "unemployment"
+      ]
+    },
+    {
+      "path": "002 Personal/007 Travel",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "itinerary",
+        "flight",
+        "boarding pass",
+        "hotel",
+        "uhaul",
+        "u haul",
+        "trip",
+        "travel",
+        "getaway",
+        "ticket",
+        "emirates"
+      ]
+    },
+    {
+      "path": "002 Personal/009 Mentorship",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "mentorship",
+        "mentor",
+        "mentee"
+      ]
+    },
+    {
+      "path": "002 Personal/001 Plan and Goals",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "goals",
+        "life plan",
+        "vision board"
+      ]
+    },
+    {
+      "path": "004 Reference/001 Guides",
+      "label": "004",
+      "strip": [
+        "Reference"
+      ],
+      "keywords": [
+        "guide",
+        "best practices",
+        "manual",
+        "tutorial",
+        "handbook",
+        "how to"
+      ]
+    },
+    {
+      "path": "005 To Be Printed",
+      "label": "005",
+      "strip": [],
+      "keywords": [
+        "to print",
+        "print this",
+        "printable"
+      ]
+    }
   ],
-
   "extra_folders": [
     "002 Personal/008 Photography",
     "003 Work/007 Other Work",
     "004 Reference/008 Backups",
     "004 Reference/009 Archive"
   ],
-
   "main_folder_labels": {
     "001 Inbox": "001",
     "002 Personal": "002 Personal",
@@ -113,22 +449,68 @@
     "005 To Be Printed": "005",
     "006 Trash": "006"
   },
-
-  "acronyms": ["AI", "BOP", "CV", "DMV", "GMAT", "GSB", "ICOI", "IRS", "LLC", "MBA", "PDF", "SQ", "STAFDA", "UCI", "USA", "VT", "YF", "FINAL"],
-
+  "acronyms": [
+    "AI",
+    "BOP",
+    "CV",
+    "DMV",
+    "GMAT",
+    "GSB",
+    "ICOI",
+    "IRS",
+    "LLC",
+    "MBA",
+    "PDF",
+    "SQ",
+    "STAFDA",
+    "UCI",
+    "USA",
+    "VT",
+    "YF",
+    "FINAL"
+  ],
   "blocked_words": [],
-
-  "protected_folder_names_contain": ["Bukrah", "Claude", "OneDrive"],
-
+  "protected_folder_names_contain": [
+    "Bukrah",
+    "Claude",
+    "OneDrive",
+    "Mohammad X Safi"
+  ],
   "mac": {
     "root": "~/Documents",
     "sources": [
-      {"path": "~/Desktop", "move_unmatched_folders": true},
-      {"path": "~/Downloads", "move_unmatched_folders": true},
-      {"path": "~/Documents", "move_unmatched_folders": false},
-      {"path": "~/Library/Mobile Documents/com~apple~CloudDocs", "move_unmatched_folders": false}
+      {
+        "path": "~/Desktop",
+        "move_unmatched_folders": true
+      },
+      {
+        "path": "~/Downloads",
+        "move_unmatched_folders": true
+      },
+      {
+        "path": "~/Documents",
+        "move_unmatched_folders": false
+      },
+      {
+        "path": "~/Library/Mobile Documents/com~apple~CloudDocs",
+        "move_unmatched_folders": false
+      }
     ],
-    "keep_in_place": ["Desktop", "Documents", "Downloads", "Shortcuts", "VT Sales Agent", "thobeelez", "tapmenu", "design-log", "Bukrah Scripts", "Nightly Organize Logs", "Cowork Organize Logs", "Organizer Kit", "Organizer Working"],
+    "keep_in_place": [
+      "Desktop",
+      "Documents",
+      "Downloads",
+      "Shortcuts",
+      "VT Sales Agent",
+      "thobeelez",
+      "tapmenu",
+      "design-log",
+      "Bukrah Scripts",
+      "Nightly Organize Logs",
+      "Cowork Organize Logs",
+      "Organizer Kit",
+      "Organizer Working"
+    ],
     "merge_old_folders": {
       "00 Inbox": "001 Inbox",
       "01 Personal": "002 Personal",
@@ -144,11 +526,22 @@
       "Personal From Bukrah Drive 08 2026": "002 Personal"
     },
     "skip_newer_than_minutes": 15,
-    "run_time": {"hour": 6, "minute": 37}
+    "run_time": {
+      "hour": 6,
+      "minute": 37
+    },
+    "icloud_merge": {
+      "Mohammad Personal": "002 Personal",
+      "Archive": "004 Reference/009 Archive"
+    },
+    "bukrah_working_folders_to": "003 Work/001 Bukrah Foundation"
   },
-
   "drive": {
-    "never_rename_inside": ["003 Work/001 Bukrah Foundation", "004 Reference/008 Backups", "004 Reference/009 Archive"],
+    "never_rename_inside": [
+      "003 Work/001 Bukrah Foundation",
+      "004 Reference/008 Backups",
+      "004 Reference/009 Archive"
+    ],
     "run_hour": 6
   }
 }

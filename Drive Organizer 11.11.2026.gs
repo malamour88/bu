@@ -51,7 +51,10 @@ const RULES = /*RULES_JSON*/{
       ],
       "keywords": [
         "bukrah",
-        "katz compliance"
+        "katz compliance",
+        "بكرا",
+        "بكرة",
+        "بكره"
       ]
     },
     {
@@ -86,7 +89,8 @@ const RULES = /*RULES_JSON*/{
         "stafda",
         "stfda",
         "bop",
-        "broker call"
+        "broker call",
+        "vpti"
       ]
     },
     {
@@ -98,7 +102,8 @@ const RULES = /*RULES_JSON*/{
       "keywords": [
         "houston",
         "propcare",
-        "bonnie garcia"
+        "bonnie garcia",
+        "texas comptroller"
       ]
     },
     {
@@ -217,6 +222,15 @@ const RULES = /*RULES_JSON*/{
       ]
     },
     {
+      "path": "006 Trash",
+      "label": "006",
+      "strip": [],
+      "keywords": [
+        "safe to delete",
+        "verified duplicates"
+      ]
+    },
+    {
       "path": "002 Personal/010 Sensitive",
       "label": "002 Personal",
       "strip": [
@@ -235,7 +249,43 @@ const RULES = /*RULES_JSON*/{
         "passwords",
         "recovery codes",
         "check scan",
-        "voided check"
+        "voided check",
+        "passports",
+        "جوازات",
+        "passport photo"
+      ]
+    },
+    {
+      "path": "002 Personal/011 Vehicles",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "keywords": [
+        "model 3",
+        "tesla",
+        "honda",
+        "grom",
+        "dmv",
+        "vehicle",
+        "car insurance",
+        "insurance card"
+      ]
+    },
+    {
+      "path": "002 Personal/012 Legal",
+      "label": "002 Personal",
+      "strip": [
+        "Personal"
+      ],
+      "confidential": true,
+      "keywords": [
+        "settlement agreement",
+        "petitioner",
+        "petitioners",
+        "court",
+        "attorney",
+        "lawsuit"
       ]
     },
     {
@@ -246,7 +296,10 @@ const RULES = /*RULES_JSON*/{
       ],
       "keywords": [
         "deaa",
-        "family"
+        "family",
+        "ahmad",
+        "qais",
+        "karam"
       ]
     },
     {
@@ -261,7 +314,6 @@ const RULES = /*RULES_JSON*/{
         "doctor",
         "lab results",
         "prescription",
-        "insurance card",
         "dental",
         "vision exam"
       ]
@@ -329,7 +381,17 @@ const RULES = /*RULES_JSON*/{
         "receipt",
         "receipts",
         "credit card",
-        "budget"
+        "budget",
+        "statements",
+        "bank",
+        "paystub",
+        "pay stub",
+        "robinhood",
+        "brokerage",
+        "citi",
+        "chase",
+        "dispute",
+        "unemployment"
       ]
     },
     {
@@ -347,7 +409,9 @@ const RULES = /*RULES_JSON*/{
         "u haul",
         "trip",
         "travel",
-        "getaway"
+        "getaway",
+        "ticket",
+        "emirates"
       ]
     },
     {
@@ -438,7 +502,8 @@ const RULES = /*RULES_JSON*/{
   "protected_folder_names_contain": [
     "Bukrah",
     "Claude",
-    "OneDrive"
+    "OneDrive",
+    "Mohammad X Safi"
   ],
   "mac": {
     "root": "~/Documents",
@@ -493,7 +558,12 @@ const RULES = /*RULES_JSON*/{
     "run_time": {
       "hour": 6,
       "minute": 37
-    }
+    },
+    "icloud_merge": {
+      "Mohammad Personal": "002 Personal",
+      "Archive": "004 Reference/009 Archive"
+    },
+    "bukrah_working_folders_to": "003 Work/001 Bukrah Foundation"
   },
   "drive": {
     "never_rename_inside": [
@@ -514,6 +584,7 @@ const MONTHS = {jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, 
 const DATE_PATTERNS = [
   ['ymd', /(?<!\d)((?:19|20)\d{2})[-_. ](\d{1,2})[-_. ](\d{1,2})(?!\d)/g],
   ['mdy', /(?<!\d)(\d{1,2})[-_. ](\d{1,2})[-_. ]((?:19|20)\d{2})(?!\d)/g],
+  ['ymd', /(?<!\d)((?:19|20)\d{2})(\d{2})(\d{2})(?!\d)/g],
   ['mdy8', /(?<!\d)(\d{2})(\d{2})((?:19|20)\d{2})(?!\d)/g],
   ['mdy6', /(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)/g],
   ['name', /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+((?:19|20)\d{2})(?!\d)/gi],
@@ -556,7 +627,9 @@ function extractDate(text) {
 }
 
 function normalizeWords(text) {
-  return ' ' + text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+  // Lower case, drop accent and Arabic vowel marks, keep letters and digits of any script.
+  const t = text.toLowerCase().normalize('NFKD').replace(/\p{Mn}/gu, '');
+  return ' ' + t.replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' ';
 }
 
 function matchRule(text, rules) {

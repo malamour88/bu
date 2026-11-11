@@ -39,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 VERSION = "11.11.2026"
@@ -64,6 +65,7 @@ MONTHS = {
 DATE_PATTERNS = [
     ("ymd", re.compile(r"(?<!\d)((?:19|20)\d{2})[-_. ](\d{1,2})[-_. ](\d{1,2})(?!\d)")),
     ("mdy", re.compile(r"(?<!\d)(\d{1,2})[-_. ](\d{1,2})[-_. ]((?:19|20)\d{2})(?!\d)")),
+    ("ymd", re.compile(r"(?<!\d)((?:19|20)\d{2})(\d{2})(\d{2})(?!\d)")),
     ("mdy8", re.compile(r"(?<!\d)(\d{2})(\d{2})((?:19|20)\d{2})(?!\d)")),
     ("mdy6", re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)")),
     ("name", re.compile(
@@ -107,7 +109,9 @@ def extract_date(text):
 
 
 def normalize_words(text):
-    return " " + re.sub(r"[^a-z0-9]+", " ", text.lower()).strip() + " "
+    """Lower case, drop accent and Arabic vowel marks, keep letters and digits of any script."""
+    text = "".join(c for c in unicodedata.normalize("NFKD", text.lower()) if unicodedata.category(c) != "Mn")
+    return " " + re.sub(r"[\W_]+", " ", text).strip() + " "
 
 
 def match_rule(text, rules):
@@ -327,8 +331,10 @@ class Run:
     # --- step 2 ---------------------------------------------------------
 
     def merge_old_folders(self):
-        for old, new in self.mac.get("merge_old_folders", {}).items():
-            src = self.root / old
+        pairs = [(self.root / old, new) for old, new in self.mac.get("merge_old_folders", {}).items()]
+        cloud = home_path("~/Library/Mobile Documents/com~apple~CloudDocs")
+        pairs += [(cloud / old, new) for old, new in self.mac.get("icloud_merge", {}).items()]
+        for src, new in pairs:
             if src.is_dir() and not src.is_symlink():
                 before = self.moves
                 self.merge_dir(src, self.root / new)
@@ -421,8 +427,6 @@ class Run:
                 return True
         elif st.st_mtime > self.cutoff:
             return True
-        if getattr(st, "st_flags", 0) & SF_DATALESS:
-            return True
         return False
 
     def file_loose_items(self):
@@ -438,9 +442,7 @@ class Run:
                 if self.skip_entry(entry, source):
                     continue
                 if entry.is_dir():
-                    if is_inbox:
-                        continue
-                    self.file_folder(entry, move_folders)
+                    self.file_folder(entry, move_folders, source, is_inbox)
                 elif entry.is_file():
                     self.file_one(entry, is_inbox)
 
@@ -469,10 +471,22 @@ class Run:
             if new_name != path.name:
                 self.counts["renamed"] += 1
 
-    def file_folder(self, path, move_unmatched):
+    def file_folder(self, path, move_unmatched, source=None, is_inbox=False):
+        bukrah_to = self.mac.get("bukrah_working_folders_to")
+        working = source in (home_path("~/Desktop"), home_path("~/Downloads"))
+        if bukrah_to and working and "bukrah" in path.name.lower() and not self.is_code_repo(path):
+            dest = self.root / bukrah_to / path.name
+            if dest.exists():
+                self.record("left in place", path, dest, "a folder with this name is already there")
+                return
+            self.move(path, dest, "file folder")
+            self.counts["filed"] += 1
+            return
         if self.is_protected_dir(path) or self.is_code_repo(path):
             return
         rule = match_rule(path.name, self.rules)
+        if is_inbox and not rule:
+            return
         if rule:
             dest = self.root / rule["path"] / path.name
         elif move_unmatched:
